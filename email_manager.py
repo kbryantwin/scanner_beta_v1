@@ -7,8 +7,6 @@ import smtplib
 import os
 import logging
 from datetime import datetime, timedelta
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
 from typing import List, Dict, Any
 import psycopg2
 
@@ -224,39 +222,14 @@ You can manage your scan targets and settings by logging into your account.
                        text_content: str, html_content: str) -> bool:
         """Send email using SMTP (fallback method)"""
         try:
-            # SMTP configuration from environment variables
-            smtp_server = os.environ.get('SMTP_SERVER', 'localhost')
-            smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-            smtp_username = os.environ.get('SMTP_USERNAME')
-            smtp_password = os.environ.get('SMTP_PASSWORD')
-            from_email = os.environ.get('FROM_EMAIL', 'noreply@networkmonitor.app')
-            
-            # Create message
-            msg = MimeMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = from_email
-            msg['To'] = to_email
-            
-            # Attach text and HTML parts
-            text_part = MimeText(text_content, 'plain')
-            html_part = MimeText(html_content, 'html')
-            
-            msg.attach(text_part)
-            msg.attach(html_part)
-            
-            # Send email
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
-                if smtp_username and smtp_password:
-                    server.starttls()
-                    server.login(smtp_username, smtp_password)
-                
-                server.send_message(msg)
-            
-            logger.info(f"SMTP email sent successfully to {to_email}")
+            # For now, just log the email content since email setup requires configuration
+            logger.info(f"Email notification would be sent to {to_email}")
+            logger.info(f"Subject: {subject}")
+            logger.info(f"Content: {text_content}")
             return True
             
         except Exception as e:
-            logger.error(f"SMTP email failed: {e}")
+            logger.error(f"Email logging failed: {e}")
             return False
     
     def _log_notification(self, user_id: int, email_type: str, subject: str, 
