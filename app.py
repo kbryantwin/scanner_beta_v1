@@ -7,14 +7,17 @@ Provides web interface for nmap scanning and port monitoring
 import os
 import json
 import logging
+import threading
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-# Removed SQLAlchemy imports - using direct PostgreSQL connection
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, g
 from scanner import NetworkScanner
 from data_manager import ScanDataManager
 from scheduler import ScanScheduler
 from db_manager import DatabaseManager
-import threading
+from auth import AuthManager
+from user_manager import UserScanManager
+from email_manager import EmailManager
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +38,9 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
 scanner = NetworkScanner()
 data_manager = ScanDataManager()
 db_manager = DatabaseManager()
+auth_manager = AuthManager()
+user_scan_manager = UserScanManager()
+email_manager = EmailManager()
 scheduler = ScanScheduler(scanner, data_manager)
 
 # Global variable to track active scans
