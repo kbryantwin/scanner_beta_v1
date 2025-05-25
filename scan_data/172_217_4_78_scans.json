@@ -1,0 +1,104 @@
+[
+  {
+    "success": true,
+    "ip_address": "172.217.4.78",
+    "timestamp": "2025-05-25T03:57:07.633323",
+    "scan_time": "170.29",
+    "open_ports": [
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "gws",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "https",
+        "version": "",
+        "product": "gws",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "ord37s18-in-f14.1e100.net",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 172.217.4.78",
+        "scaninfo": {
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Sun May 25 03:57:07 2025",
+          "elapsed": "170.29",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "172.217.4.78": {
+          "hostnames": [
+            {
+              "name": "ord37s18-in-f14.1e100.net",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "172.217.4.78"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "80": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "gws",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "https",
+              "product": "gws",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  }
+]

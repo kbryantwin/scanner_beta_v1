@@ -166,8 +166,8 @@
                                             <strong>{{ scan.ip_address }}</strong>
                                         </td>
                                         <td>
-                                            <span class="text-muted">
-                                                {{ moment(scan.timestamp).format('MMM DD, YYYY HH:mm') }}
+                                            <span class="text-muted" data-timestamp="{{ scan.timestamp }}">
+                                                {{ scan.timestamp[:19].replace('T', ' ') }}
                                             </span>
                                         </td>
                                         <td>
