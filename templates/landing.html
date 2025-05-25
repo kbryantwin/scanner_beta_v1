@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitor - Welcome</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h1 class="card-title mb-4">Network Monitor</h1>
+                        <p class="card-text lead">Monitor your network infrastructure with automated port scanning and email alerts.</p>
+                        
+                        <div class="row mt-5">
+                            <div class="col-md-4">
+                                <div class="feature-box">
+                                    <h5>Automated Scanning</h5>
+                                    <p>Schedule regular scans of your IP addresses with configurable intervals.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature-box">
+                                    <h5>Email Alerts</h5>
+                                    <p>Get daily digest emails about port changes and scan results.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature-box">
+                                    <h5>Easy Management</h5>
+                                    <p>Pause, resume, and delete scan jobs with simple controls.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-5">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">Sign In</a>
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">Create Account</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

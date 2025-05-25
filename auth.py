@@ -3,7 +3,7 @@ Authentication Module for Network Monitoring Tool
 Handles user registration, login, and session management
 """
 
-import bcrypt
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -134,8 +134,9 @@ class AuthManager:
     def register_user(self, email: str, password: str) -> bool:
         """Register a new user"""
         try:
-            # Hash password
-            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            # Hash password with salt
+            salt = secrets.token_hex(16)
+            password_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest() + ':' + salt
             
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -176,7 +177,8 @@ class AuthManager:
                 return None
             
             # Check password
-            if bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8')):
+            stored_hash, salt = password_hash.split(':')
+            if hashlib.sha256((password + salt).encode('utf-8')).hexdigest() == stored_hash:
                 return {
                     'id': user_id,
                     'email': user_email,

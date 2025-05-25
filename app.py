@@ -46,25 +46,257 @@ scheduler = ScanScheduler(scanner, data_manager)
 # Global variable to track active scans
 active_scans = {}
 
+# Authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check for session token
+        session_token = session.get('session_token')
+        if not session_token:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        
+        # Validate session
+        user = auth_manager.validate_session(session_token)
+        if not user:
+            session.clear()
+            flash('Your session has expired. Please log in again.', 'warning')
+            return redirect(url_for('login'))
+        
+        # Store user in g for access in views
+        g.current_user = user
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Before request handler to check authentication
+@app.before_request
+def load_user():
+    g.current_user = None
+    session_token = session.get('session_token')
+    if session_token:
+        user = auth_manager.validate_session(session_token)
+        if user:
+            g.current_user = user
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page"""
+    if g.current_user:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        
+        if not email or not password:
+            flash('Please enter both email and password.', 'error')
+            return render_template('login.html')
+        
+        user = auth_manager.authenticate_user(email, password)
+        if user:
+            session_token = auth_manager.create_session(user['id'])
+            session['session_token'] = session_token
+            flash(f'Welcome back, {email}!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid email or password.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page"""
+    if g.current_user:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        if not email or not password:
+            flash('Please enter both email and password.', 'error')
+            return render_template('register.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('register.html')
+        
+        if auth_manager.register_user(email, password):
+            flash('Account created successfully! Please log in.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('An account with this email already exists.', 'error')
+    
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    """User logout"""
+    session_token = session.get('session_token')
+    if session_token:
+        auth_manager.invalidate_session(session_token)
+    session.clear()
+    flash('You have been logged out successfully.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
 def index():
-    """Main dashboard page"""
+    """Landing page - redirect based on auth status"""
+    if g.current_user:
+        return redirect(url_for('dashboard'))
+    return render_template('landing.html')
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """User dashboard page"""
     try:
-        # Get recent scan summaries
-        recent_scans = data_manager.get_recent_scans(limit=10)
-        active_targets = data_manager.get_active_targets()
+        user_id = g.current_user['id']
+        targets = user_scan_manager.get_user_targets(user_id)
+        recent_scans = user_scan_manager.get_user_scan_history(user_id, limit=10)
         
-        return render_template('index.html', 
+        return render_template('dashboard.html', 
+                             targets=targets,
                              recent_scans=recent_scans,
-                             active_targets=active_targets)
+                             scanner_info=scanner.get_scanner_info(),
+                             user=g.current_user)
     except Exception as e:
         logger.error(f"Error loading dashboard: {e}")
-        flash(f"Error loading dashboard: {str(e)}", 'error')
-        return render_template('index.html', recent_scans=[], active_targets=[])
+        flash('Error loading dashboard data.', 'error')
+        return render_template('dashboard.html', 
+                             targets=[],
+                             recent_scans=[],
+                             scanner_info={},
+                             user=g.current_user)
+
+# User scan management routes
+@app.route('/add_target', methods=['POST'])
+@login_required
+def add_scan_target():
+    """Add a new scan target for the user"""
+    try:
+        ip_address = request.form.get('ip_address', '').strip()
+        description = request.form.get('description', '').strip()
+        scan_interval_minutes = int(request.form.get('scan_interval_minutes', 720))
+        
+        if not ip_address:
+            flash('Please enter an IP address.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        # Validate scan interval (minimum 30 minutes)
+        if scan_interval_minutes < 30:
+            scan_interval_minutes = 30
+            flash('Scan interval set to minimum of 30 minutes.', 'warning')
+        
+        user_id = g.current_user['id']
+        if user_scan_manager.add_scan_target(user_id, ip_address, description, scan_interval_minutes):
+            flash(f'Successfully added {ip_address} to your monitoring targets.', 'success')
+        else:
+            flash(f'IP address {ip_address} is already being monitored.', 'warning')
+        
+        return redirect(url_for('dashboard'))
+        
+    except ValueError:
+        flash('Invalid scan interval. Please enter a number.', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        logger.error(f"Error adding scan target: {e}")
+        flash('Error adding scan target.', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/update_interval', methods=['POST'])
+@login_required
+def update_scan_interval():
+    """Update scan interval for a target"""
+    try:
+        target_id = int(request.form.get('target_id'))
+        scan_interval_minutes = int(request.form.get('scan_interval_minutes'))
+        
+        # Validate scan interval (minimum 30 minutes)
+        if scan_interval_minutes < 30:
+            flash('Scan interval must be at least 30 minutes.', 'error')
+            return redirect(url_for('dashboard'))
+        
+        user_id = g.current_user['id']
+        if user_scan_manager.update_scan_interval(user_id, target_id, scan_interval_minutes):
+            flash('Scan interval updated successfully.', 'success')
+        else:
+            flash('Error updating scan interval.', 'error')
+        
+        return redirect(url_for('dashboard'))
+        
+    except (ValueError, TypeError):
+        flash('Invalid input. Please check your values.', 'error')
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        logger.error(f"Error updating scan interval: {e}")
+        flash('Error updating scan interval.', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/pause_target/<int:target_id>')
+@login_required
+def pause_target(target_id):
+    """Pause scanning for a target"""
+    try:
+        user_id = g.current_user['id']
+        if user_scan_manager.pause_target(user_id, target_id):
+            flash('Target scanning paused.', 'success')
+        else:
+            flash('Error pausing target.', 'error')
+        
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error pausing target: {e}")
+        flash('Error pausing target.', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/resume_target/<int:target_id>')
+@login_required
+def resume_target(target_id):
+    """Resume scanning for a target"""
+    try:
+        user_id = g.current_user['id']
+        if user_scan_manager.resume_target(user_id, target_id):
+            flash('Target scanning resumed.', 'success')
+        else:
+            flash('Error resuming target.', 'error')
+        
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error resuming target: {e}")
+        flash('Error resuming target.', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/delete_target/<int:target_id>')
+@login_required
+def delete_target(target_id):
+    """Delete a scan target"""
+    try:
+        user_id = g.current_user['id']
+        if user_scan_manager.delete_target(user_id, target_id):
+            flash('Target deleted successfully.', 'success')
+        else:
+            flash('Error deleting target.', 'error')
+        
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error deleting target: {e}")
+        flash('Error deleting target.', 'error')
+        return redirect(url_for('dashboard'))
 
 @app.route('/scan', methods=['POST'])
+@login_required
 def start_scan():
-    """Start a new scan for the specified IP address"""
+    """Start a manual scan for a specific target"""
     try:
         ip_address = request.form.get('ip_address', '').strip()
         

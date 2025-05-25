@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Network Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">Network Monitor</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">Welcome, {{ user.email }}</span>
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add New Target -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Add New Monitoring Target</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_scan_target') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="ip_address" placeholder="IP Address" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" name="description" placeholder="Description (optional)">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" name="scan_interval_minutes">
+                                <option value="30">30 minutes</option>
+                                <option value="60">1 hour</option>
+                                <option value="180">3 hours</option>
+                                <option value="360">6 hours</option>
+                                <option value="720" selected>12 hours (default)</option>
+                                <option value="1440">24 hours</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">Add Target</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Current Targets -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your Monitoring Targets</h5>
+            </div>
+            <div class="card-body">
+                {% if targets %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Description</th>
+                                    <th>Interval</th>
+                                    <th>Status</th>
+                                    <th>Last Scan</th>
+                                    <th>Next Scan</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for target in targets %}
+                                <tr>
+                                    <td>{{ target.ip_address }}</td>
+                                    <td>{{ target.description or '-' }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('update_scan_interval') }}" class="d-inline">
+                                            <input type="hidden" name="target_id" value="{{ target.id }}">
+                                            <select name="scan_interval_minutes" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                <option value="30" {% if target.scan_interval_minutes == 30 %}selected{% endif %}>30 min</option>
+                                                <option value="60" {% if target.scan_interval_minutes == 60 %}selected{% endif %}>1 hour</option>
+                                                <option value="180" {% if target.scan_interval_minutes == 180 %}selected{% endif %}>3 hours</option>
+                                                <option value="360" {% if target.scan_interval_minutes == 360 %}selected{% endif %}>6 hours</option>
+                                                <option value="720" {% if target.scan_interval_minutes == 720 %}selected{% endif %}>12 hours</option>
+                                                <option value="1440" {% if target.scan_interval_minutes == 1440 %}selected{% endif %}>24 hours</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        {% if target.is_paused %}
+                                            <span class="badge bg-warning">Paused</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if target.last_scan_at %}
+                                            {{ target.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            Never
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if target.next_scan_at and not target.is_paused %}
+                                            {{ target.next_scan_at.strftime('%Y-%m-%d %H:%M') }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if target.is_paused %}
+                                                <a href="{{ url_for('resume_target', target_id=target.id) }}" class="btn btn-outline-success btn-sm">Resume</a>
+                                            {% else %}
+                                                <a href="{{ url_for('pause_target', target_id=target.id) }}" class="btn btn-outline-warning btn-sm">Pause</a>
+                                            {% endif %}
+                                            <form method="POST" action="{{ url_for('start_scan') }}" class="d-inline">
+                                                <input type="hidden" name="ip_address" value="{{ target.ip_address }}">
+                                                <button type="submit" class="btn btn-outline-primary btn-sm">Scan Now</button>
+                                            </form>
+                                            <a href="{{ url_for('delete_target', target_id=target.id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this target?')">Delete</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No monitoring targets configured yet. Add one above to get started!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Scan Results -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Scan Results</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_scans %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>IP Address</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Open Ports</th>
+                                    <th>Scan Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for scan in recent_scans %}
+                                <tr>
+                                    <td>{{ scan.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>{{ scan.ip_address }}</td>
+                                    <td>{{ scan.description or '-' }}</td>
+                                    <td>
+                                        {% if scan.success %}
+                                            <span class="badge bg-success">Success</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ scan.open_ports_count }}</td>
+                                    <td>{{ scan.scan_time or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No scan results yet. Your targets will appear here after scanning.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Email Notification Settings -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Email Notification Settings</h5>
+            </div>
+            <div class="card-body">
+                <p>Daily digest emails are automatically sent to <strong>{{ user.email }}</strong> with summaries of all port changes and scan results.</p>
+                <p class="text-muted"><small>To set up email notifications, please contact your administrator to configure SendGrid API key.</small></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
