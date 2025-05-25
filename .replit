@@ -22,11 +22,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip install flask python-nmap && python app.py"
+args = "pip install flask python-nmap flask-sqlalchemy psycopg2-binary sqlalchemy && python app.py"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "pip install flask python-nmap && python app.py"]
+run = ["sh", "-c", "pip install flask python-nmap flask-sqlalchemy psycopg2-binary sqlalchemy && python app.py"]
 
 [[ports]]
 localPort = 5000

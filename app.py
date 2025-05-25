@@ -9,6 +9,8 @@ import json
 import logging
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 from scanner import NetworkScanner
 from data_manager import ScanDataManager
 from scheduler import ScanScheduler
@@ -25,8 +27,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class Base(DeclarativeBase):
+    pass
+
+# Initialize Flask app and database
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+# Initialize database
+db = SQLAlchemy(model_class=Base)
+db.init_app(app)
 
 # Initialize components
 scanner = NetworkScanner()
@@ -229,6 +244,14 @@ def internal_error(error):
     return render_template('index.html'), 500
 
 if __name__ == '__main__':
+    with app.app_context():
+        # Import models to ensure they're registered with SQLAlchemy
+        import models
+        
+        # Create all database tables
+        db.create_all()
+        logger.info("Database tables created successfully")
+    
     # Start the scheduler in a background thread
     scheduler_thread = threading.Thread(target=scheduler.start)
     scheduler_thread.daemon = True
