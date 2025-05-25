@@ -2,6 +2,213 @@
   {
     "success": true,
     "ip_address": "64.33.128.70",
+    "timestamp": "2025-05-25T04:52:49.356073",
+    "scan_time": "182.95",
+    "open_ports": [
+      {
+        "port": 21,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "ftp",
+        "version": "",
+        "product": "Pure-FTPd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:pureftpd:pure-ftpd"
+      },
+      {
+        "port": 53,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "domain",
+        "version": "4.9.2",
+        "product": "PowerDNS Authoritative Server",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:powerdns:authoritative:4.9.2"
+      },
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Apache httpd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:apache:http_server"
+      },
+      {
+        "port": 443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Apache httpd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:apache:http_server"
+      },
+      {
+        "port": 2083,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "radsec",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "3",
+        "cpe": ""
+      },
+      {
+        "port": 2087,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "eli",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "3",
+        "cpe": ""
+      },
+      {
+        "port": 59537,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "tcpwrapped",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "8",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "cpanel-3.airstreamcomm.net",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 64.33.128.70",
+        "scaninfo": {
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Sun May 25 04:52:49 2025",
+          "elapsed": "182.95",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "64.33.128.70": {
+          "hostnames": [
+            {
+              "name": "cpanel-3.airstreamcomm.net",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "64.33.128.70"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "21": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "ftp",
+              "product": "Pure-FTPd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:pureftpd:pure-ftpd"
+            },
+            "53": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "domain",
+              "product": "PowerDNS Authoritative Server",
+              "version": "4.9.2",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:powerdns:authoritative:4.9.2"
+            },
+            "80": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Apache httpd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:apache:http_server"
+            },
+            "443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Apache httpd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:apache:http_server"
+            },
+            "2083": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "radsec",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "3",
+              "cpe": ""
+            },
+            "2087": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "eli",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "3",
+              "cpe": ""
+            },
+            "59537": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "tcpwrapped",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "8",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "success": true,
+    "ip_address": "64.33.128.70",
     "timestamp": "2025-05-25T04:38:03.734938",
     "scan_time": "183.45",
     "open_ports": [
