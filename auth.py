@@ -30,6 +30,25 @@ class AuthManager:
         except Exception as e:
             logger.error(f"Failed to connect to database: {e}")
             raise
+
+    def ensure_connection(self):
+        """Ensure database connection is active, reconnect if needed"""
+        try:
+            if self.conn is None or self.conn.closed:
+                self.connect()
+            else:
+                # Test the connection
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+        except:
+            # Connection is bad, reconnect
+            try:
+                if self.conn:
+                    self.conn.close()
+            except:
+                pass
+            self.connect()
     
     def create_auth_tables(self):
         """Create authentication tables"""
@@ -134,6 +153,9 @@ class AuthManager:
     def register_user(self, email: str, password: str) -> bool:
         """Register a new user"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             # Hash password with salt
             salt = secrets.token_hex(16)
             password_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest() + ':' + salt
@@ -160,6 +182,9 @@ class AuthManager:
     def authenticate_user(self, email: str, password: str) -> Optional[Dict[str, Any]]:
         """Authenticate user and return user data"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT id, email, password_hash, is_active
@@ -215,6 +240,9 @@ class AuthManager:
     def validate_session(self, session_token: str) -> Optional[Dict[str, Any]]:
         """Validate session and return user data"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT u.id, u.email, u.is_active, s.expires_at
