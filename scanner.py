@@ -67,12 +67,12 @@ class NetworkScanner:
                 port_range = '1-65535'  # Scan all ports
             
             # Perform scan without ping (as requested)
-            # -sS: SYN scan (stealth scan)
+            # -sT: TCP connect scan (doesn't require root)
             # -Pn: No ping (skip host discovery)
             # -sV: Version detection
-            # -O: OS detection
             # --open: Only show open ports
-            scan_args = '-sS -Pn -sV -O --open'
+            # Note: Removed -O (OS detection) as it requires root privileges
+            scan_args = '-sT -Pn -sV --open'
             
             logger.info(f"Scanning {ip_address} with arguments: {scan_args}")
             
