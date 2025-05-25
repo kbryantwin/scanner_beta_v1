@@ -4,13 +4,11 @@ Database Models for Network Monitoring Tool
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, JSON, ForeignKey
-from sqlalchemy.orm import relationship
 
-# This will be imported after app is initialized
-db = None
-
-class ScanTarget(db.Model):
+def create_models(db):
+    """Create database models with the given db instance"""
+    
+    class ScanTarget(db.Model):
     """Model for scan targets (IP addresses being monitored)"""
     __tablename__ = 'scan_targets'
     
