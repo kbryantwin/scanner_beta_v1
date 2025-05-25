@@ -27,11 +27,33 @@ class UserScanManager:
         except Exception as e:
             logger.error(f"Failed to connect to database: {e}")
             raise
+
+    def ensure_connection(self):
+        """Ensure database connection is active, reconnect if needed"""
+        try:
+            if self.conn is None or self.conn.closed:
+                self.connect()
+            else:
+                # Test the connection
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+        except:
+            # Connection is bad, reconnect
+            try:
+                if self.conn:
+                    self.conn.close()
+            except:
+                pass
+            self.connect()
     
     def add_scan_target(self, user_id: int, ip_address: str, description: str = "", 
                        scan_interval_minutes: int = 720) -> bool:
         """Add a new scan target for user"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             # Validate scan interval (minimum 30 minutes)
             if scan_interval_minutes < 30:
                 scan_interval_minutes = 30
@@ -62,6 +84,9 @@ class UserScanManager:
     def get_user_targets(self, user_id: int) -> List[Dict[str, Any]]:
         """Get all scan targets for a user"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT id, ip_address, description, scan_interval_minutes, 
@@ -290,6 +315,9 @@ class UserScanManager:
                              limit: int = 50) -> List[Dict[str, Any]]:
         """Get scan history for user"""
         try:
+            # Ensure database connection
+            self.ensure_connection()
+            
             cursor = self.conn.cursor()
             
             if ip_address:
