@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Results - {{ ip_address }} | Network Monitoring Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i data-feather="shield" class="me-2"></i>
+                Network Monitor
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('index') }}">
+                    <i data-feather="home" class="me-1"></i>
+                    Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show" role="alert">
+                        <i data-feather="{{ 'alert-circle' if category == 'error' else 'alert-triangle' if category == 'warning' else 'check-circle' }}" class="me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-dark text-white">
+                    <div class="card-body">
+                        <h1 class="card-title mb-0">
+                            <i data-feather="target" class="me-2"></i>
+                            Scan Results for {{ ip_address }}
+                        </h1>
+                        <div class="mt-3">
+                            <a href="{{ url_for('start_scan') }}" class="btn btn-light" onclick="event.preventDefault(); document.getElementById('rescan-form').submit();">
+                                <i data-feather="refresh-cw" class="me-2"></i>
+                                Rescan Now
+                            </a>
+                            {% if latest_scan and latest_scan.success %}
+                                <a href="{{ url_for('schedule_monitoring', ip=ip_address) }}" class="btn btn-warning">
+                                    <i data-feather="clock" class="me-2"></i>
+                                    Enable 24h Monitoring
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Hidden form for rescanning -->
+                        <form id="rescan-form" method="POST" action="{{ url_for('start_scan') }}" style="display: none;">
+                            <input type="hidden" name="ip_address" value="{{ ip_address }}">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Status -->
+        {% if scan_status and scan_status.status == 'running' %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <div class="spinner-border text-warning me-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5 class="d-inline-block mb-0">Scan in Progress</h5>
+                        <p class="text-muted mt-2">Please wait while we scan {{ ip_address }}...</p>
+                        <div id="scan-progress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Port Changes Alert -->
+        {% if port_changes and port_changes.has_changes %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="alert-triangle" class="me-2"></i>
+                            Port Changes Detected
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if port_changes.new_ports %}
+                        <div class="alert alert-danger">
+                            <h6 class="alert-heading">
+                                <i data-feather="plus-circle" class="me-2"></i>
+                                New Ports Opened
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for port in port_changes.new_ports %}
+                                <span class="badge bg-danger">{{ port }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if port_changes.closed_ports %}
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i data-feather="minus-circle" class="me-2"></i>
+                                Ports Closed
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for port in port_changes.closed_ports %}
+                                <span class="badge bg-info">{{ port }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <small class="text-muted">
+                            Comparison between 
+                            {{ moment(port_changes.latest_scan_time).format('MMM DD, YYYY HH:mm') }} 
+                            and 
+                            {{ moment(port_changes.previous_scan_time).format('MMM DD, YYYY HH:mm') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Latest Scan Results -->
+        {% if latest_scan %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="activity" class="me-2"></i>
+                            Latest Scan Results
+                        </h5>
+                        <small class="text-muted">
+                            Scanned on {{ moment(latest_scan.timestamp).format('MMM DD, YYYY HH:mm') }}
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        {% if latest_scan.success %}
+                        <!-- Scan Summary -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-success">{{ latest_scan.open_ports|length }}</h3>
+                                        <p class="card-text">Open Ports</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-info">{{ latest_scan.scan_time }}s</h3>
+                                        <p class="card-text">Scan Time</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-primary">{{ latest_scan.host_info.state|title }}</h3>
+                                        <p class="card-text">Host State</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-secondary">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-secondary">TCP</h3>
+                                        <p class="card-text">Protocol</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Host Information -->
+                        {% if latest_scan.host_info %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i data-feather="server" class="me-2"></i>
+                                    Host Information
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Hostname:</strong> {{ latest_scan.host_info.hostname or 'Unknown' }}</p>
+                                        <p><strong>State:</strong> {{ latest_scan.host_info.state|title }}</p>
+                                        <p><strong>Reason:</strong> {{ latest_scan.host_info.reason }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if latest_scan.host_info.os.name %}
+                                        <p><strong>OS:</strong> {{ latest_scan.host_info.os.name }}</p>
+                                        <p><strong>Accuracy:</strong> {{ latest_scan.host_info.os.accuracy }}%</p>
+                                        {% else %}
+                                        <p><strong>OS:</strong> Could not determine</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Open Ports -->
+                        {% if latest_scan.open_ports %}
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i data-feather="list" class="me-2"></i>
+                                    Open Ports ({{ latest_scan.open_ports|length }})
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Port</th>
+                                                <th>Service</th>
+                                                <th>Version</th>
+                                                <th>Product</th>
+                                                <th>State</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for port in latest_scan.open_ports %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ port.port }}/{{ port.protocol }}</span>
+                                                </td>
+                                                <td>
+                                                    <strong>{{ port.service|title }}</strong>
+                                                </td>
+                                                <td>{{ port.version or '-' }}</td>
+                                                <td>{{ port.product or '-' }}</td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ port.state|title }}</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i data-feather="info" class="me-2"></i>
+                            No open ports detected during this scan.
+                        </div>
+                        {% endif %}
+
+                        {% else %}
+                        <!-- Scan Failed -->
+                        <div class="alert alert-danger">
+                            <h6 class="alert-heading">
+                                <i data-feather="x-circle" class="me-2"></i>
+                                Scan Failed
+                            </h6>
+                            <p class="mb-0">{{ latest_scan.error }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Scan History -->
+        {% if scan_history %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="clock" class="me-2"></i>
+                            Scan History
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Status</th>
+                                        <th>Open Ports</th>
+                                        <th>Scan Time</th>
+                                        <th>Changes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for scan in scan_history %}
+                                    <tr>
+                                        <td>{{ moment(scan.timestamp).format('MMM DD, YYYY HH:mm') }}</td>
+                                        <td>
+                                            {% if scan.success %}
+                                                <span class="badge bg-success">Success</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Failed</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if scan.success %}
+                                                <span class="badge bg-info">{{ scan.open_ports|length }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ scan.scan_time or '-' }}s</td>
+                                        <td>
+                                            {% if loop.index0 < scan_history|length - 1 %}
+                                                {% set prev_scan = scan_history[loop.index0 + 1] %}
+                                                {% if scan.success and prev_scan.success %}
+                                                    {% set current_ports = scan.open_ports|map(attribute='port')|list %}
+                                                    {% set prev_ports = prev_scan.open_ports|map(attribute='port')|list %}
+                                                    {% set new_ports = current_ports|reject('in', prev_ports)|list %}
+                                                    {% set closed_ports = prev_ports|reject('in', current_ports)|list %}
+                                                    
+                                                    {% if new_ports or closed_ports %}
+                                                        {% if new_ports %}
+                                                            <span class="badge bg-danger me-1">+{{ new_ports|length }}</span>
+                                                        {% endif %}
+                                                        {% if closed_ports %}
+                                                            <span class="badge bg-info">-{{ closed_ports|length }}</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="text-muted">No change</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">First scan</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i data-feather="inbox" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                        <h5 class="text-muted">No scan data available</h5>
+                        <p class="text-muted">Start a scan to see results here.</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i data-feather="arrow-left" class="me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Initialize Feather icons
+        feather.replace();
+
+        // Moment.js helper for template
+        function moment(timestamp) {
+            return {
+                format: function(format) {
+                    const date = new Date(timestamp);
+                    if (format === 'MMM DD, YYYY HH:mm') {
+                        return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + date.toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                    }
+                    return date.toLocaleString();
+                }
+            };
+        }
+
+        // Check scan status if scan is running
+        {% if scan_status and scan_status.status == 'running' %}
+        let scanCheckInterval = setInterval(function() {
+            fetch('/api/scan_status/{{ ip_address }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        clearInterval(scanCheckInterval);
+                        location.reload();
+                    } else if (data.status === 'failed') {
+                        clearInterval(scanCheckInterval);
+                        document.getElementById('scan-progress').innerHTML = 
+                            '<div class="alert alert-danger mt-3">Scan failed: ' + (data.error || 'Unknown error') + '</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking scan status:', error);
+                });
+        }, 5000); // Check every 5 seconds
+        {% endif %}
+    </script>
+</body>
+</html>

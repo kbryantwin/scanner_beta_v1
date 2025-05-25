@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Monitoring Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i data-feather="shield" class="me-2"></i>
+                Network Monitor
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('index') }}">
+                    <i data-feather="home" class="me-1"></i>
+                    Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'success' }} alert-dismissible fade show" role="alert">
+                        <i data-feather="{{ 'alert-circle' if category == 'error' else 'alert-triangle' if category == 'warning' else 'check-circle' }}" class="me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h1 class="card-title mb-0">
+                            <i data-feather="activity" class="me-2"></i>
+                            Network Monitoring Dashboard
+                        </h1>
+                        <p class="card-text mt-2">
+                            Monitor network ports with automated scanning and change detection
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Form -->
+        <div class="row mb-4">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="search" class="me-2"></i>
+                            Start New Scan
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('start_scan') }}" class="needs-validation" novalidate>
+                            <div class="mb-3">
+                                <label for="ip_address" class="form-label">IP Address</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i data-feather="globe"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="ip_address" 
+                                           name="ip_address" 
+                                           placeholder="e.g., 192.168.1.1" 
+                                           pattern="^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                           required>
+                                    <div class="invalid-feedback">
+                                        Please provide a valid IP address.
+                                    </div>
+                                </div>
+                                <div class="form-text">
+                                    Enter the IP address you want to scan for open ports
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="play" class="me-2"></i>
+                                Start Scan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Targets -->
+        {% if active_targets %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="target" class="me-2"></i>
+                            Active Monitoring Targets
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for target in active_targets %}
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card border-secondary">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">{{ target }}</h6>
+                                        <a href="{{ url_for('results', ip=target) }}" class="btn btn-outline-primary btn-sm">
+                                            <i data-feather="eye" class="me-1"></i>
+                                            View Results
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Scans -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="clock" class="me-2"></i>
+                            Recent Scans
+                        </h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshPage()">
+                            <i data-feather="refresh-cw" class="me-1"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_scans %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>IP Address</th>
+                                        <th>Timestamp</th>
+                                        <th>Status</th>
+                                        <th>Open Ports</th>
+                                        <th>Scan Time</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for scan in recent_scans %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ scan.ip_address }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">
+                                                {{ moment(scan.timestamp).format('MMM DD, YYYY HH:mm') }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if scan.success %}
+                                                <span class="badge bg-success">
+                                                    <i data-feather="check" class="me-1"></i>
+                                                    Success
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    <i data-feather="x" class="me-1"></i>
+                                                    Failed
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if scan.success %}
+                                                <span class="badge bg-info">{{ scan.open_ports_count }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">{{ scan.scan_time }}s</span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('results', ip=scan.ip_address) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i data-feather="eye" class="me-1"></i>
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i data-feather="inbox" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                            <p class="text-muted">No scans have been performed yet.</p>
+                            <p class="text-muted">Start by entering an IP address above to begin monitoring.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="card-title mb-0">
+                            <i data-feather="info" class="me-2"></i>
+                            How it works
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li><strong>Start a scan:</strong> Enter an IP address and click "Start Scan" to perform an immediate nmap scan</li>
+                            <li><strong>View results:</strong> Click on "View" to see detailed scan results and port information</li>
+                            <li><strong>Enable monitoring:</strong> From the results page, enable 24-hour automated monitoring</li>
+                            <li><strong>Get alerts:</strong> The system will automatically detect and notify you of any port changes</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Initialize Feather icons
+        feather.replace();
+
+        // Bootstrap form validation
+        (function() {
+            'use strict';
+            window.addEventListener('load', function() {
+                var forms = document.getElementsByClassName('needs-validation');
+                var validation = Array.prototype.filter.call(forms, function(form) {
+                    form.addEventListener('submit', function(event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+
+        // Moment.js helper for template
+        function moment(timestamp) {
+            return {
+                format: function(format) {
+                    const date = new Date(timestamp);
+                    if (format === 'MMM DD, YYYY HH:mm') {
+                        return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: '2-digit',
+                            year: 'numeric'
+                        }) + ' ' + date.toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                    }
+                    return date.toLocaleString();
+                }
+            };
+        }
+
+        function refreshPage() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>

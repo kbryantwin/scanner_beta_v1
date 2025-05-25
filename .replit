@@ -1,0 +1,33 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["nmap"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "NetworkMonitor"
+
+[[workflows.workflow]]
+name = "NetworkMonitor"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install flask python-nmap && python app.py"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "pip install flask python-nmap && python app.py"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
