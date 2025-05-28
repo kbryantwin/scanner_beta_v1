@@ -1,0 +1,377 @@
+[
+  {
+    "success": true,
+    "ip_address": "1.1.1.1",
+    "timestamp": "2025-05-27T16:25:02.791154",
+    "scan_time": "119.31",
+    "open_ports": [
+      {
+        "port": 53,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "domain",
+        "version": "",
+        "product": "Unbound",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:nlnetlabs:unbound"
+      },
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 853,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "domain",
+        "version": "",
+        "product": "Unbound",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:nlnetlabs:unbound"
+      },
+      {
+        "port": 2052,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 2053,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "nginx",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:igor_sysoev:nginx"
+      },
+      {
+        "port": 2082,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 2083,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "nginx",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:igor_sysoev:nginx"
+      },
+      {
+        "port": 2086,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 2087,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "nginx",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:igor_sysoev:nginx"
+      },
+      {
+        "port": 2095,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 2096,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "nginx",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:igor_sysoev:nginx"
+      },
+      {
+        "port": 8080,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 8443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 8880,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Cloudflare http proxy",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "one.one.one.one",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 1.1.1.1",
+        "scaninfo": {
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Tue May 27 16:25:02 2025",
+          "elapsed": "119.31",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "1.1.1.1": {
+          "hostnames": [
+            {
+              "name": "one.one.one.one",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "1.1.1.1"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "53": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "domain",
+              "product": "Unbound",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:nlnetlabs:unbound"
+            },
+            "80": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "853": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "domain",
+              "product": "Unbound",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:nlnetlabs:unbound"
+            },
+            "2052": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "2053": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "nginx",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:igor_sysoev:nginx"
+            },
+            "2082": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "2083": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "nginx",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:igor_sysoev:nginx"
+            },
+            "2086": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "2087": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "nginx",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:igor_sysoev:nginx"
+            },
+            "2095": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "2096": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "nginx",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:igor_sysoev:nginx"
+            },
+            "8080": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "8443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "8880": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Cloudflare http proxy",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,149 @@
+[
+  {
+    "success": true,
+    "ip_address": "64.33.129.186",
+    "timestamp": "2025-05-27T14:42:44.202918",
+    "scan_time": "317.52",
+    "open_ports": [
+      {
+        "port": 179,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "tcpwrapped",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "8",
+        "cpe": ""
+      },
+      {
+        "port": 943,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "rtsp",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 7300,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "swx",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "3",
+        "cpe": ""
+      },
+      {
+        "port": 8013,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "unknown",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "3",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "mail.wins.net",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 64.33.129.186",
+        "scaninfo": {
+          "warning": [
+            "WARNING: Service 64.33.129.186:943 had already soft-matched rtsp, but now soft-matched sip; ignoring second value\n"
+          ],
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Tue May 27 14:42:44 2025",
+          "elapsed": "317.52",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "64.33.129.186": {
+          "hostnames": [
+            {
+              "name": "mail.wins.net",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "64.33.129.186"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "179": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "tcpwrapped",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "8",
+              "cpe": ""
+            },
+            "943": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "rtsp",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "7300": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "swx",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "3",
+              "cpe": ""
+            },
+            "8013": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "unknown",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "3",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  }
+]
