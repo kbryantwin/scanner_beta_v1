@@ -2,6 +2,129 @@
   {
     "success": true,
     "ip_address": "8.8.8.8",
+    "timestamp": "2025-05-30T18:08:27.979940",
+    "scan_time": "168.27",
+    "open_ports": [
+      {
+        "port": 53,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "tcpwrapped",
+        "version": "",
+        "product": "",
+        "extrainfo": "",
+        "conf": "8",
+        "cpe": ""
+      },
+      {
+        "port": 443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "https",
+        "version": "",
+        "product": "HTTP server (unknown)",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 853,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "domain",
+        "version": "",
+        "product": "",
+        "extrainfo": "generic dns response: SERVFAIL",
+        "conf": "10",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "dns.google",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 8.8.8.8",
+        "scaninfo": {
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Fri May 30 18:08:27 2025",
+          "elapsed": "168.27",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "8.8.8.8": {
+          "hostnames": [
+            {
+              "name": "dns.google",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "8.8.8.8"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "53": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "tcpwrapped",
+              "product": "",
+              "version": "",
+              "extrainfo": "",
+              "conf": "8",
+              "cpe": ""
+            },
+            "443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "https",
+              "product": "HTTP server (unknown)",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": ""
+            },
+            "853": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "domain",
+              "product": "",
+              "version": "",
+              "extrainfo": "generic dns response: SERVFAIL",
+              "conf": "10",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "success": true,
+    "ip_address": "8.8.8.8",
     "timestamp": "2025-05-25T04:36:25.468644",
     "scan_time": "168.71",
     "open_ports": [

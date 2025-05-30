@@ -1,0 +1,30 @@
+Do not make any code changes. Tell me what you are going to do. What questions do you have to complete these changes?
+An important thing to consider.  As each scan target job happens at different times throughout the day the plotted “Open” or “Closed” port should be normalized to the day.  If a port ever shows as open during that day (or assumed to be open since the last scan job, then for that day and datapoint on the graph, it should be considered open.  If it is open and closed for that day, it should be marked as open.  
+
+Here are the answers to your questions:
+1.	Target Selection State: Should the checkboxes for target inclusion in the aggregate chart remember their state (persist across page reloads), or reset to all-enabled each time?
+•	Presist to what the user has set it to
+2.	Chart Performance: With multiple targets, the chart could become quite dense. Should I implement any limits on:
+1.	Create simple time range selector tool to fix this issue. Default the selection to the last 7 days of data. No limit on targets or datapoints.
+
+3.	Visual Differentiation: Since multiple IPs might have the same port open, how should I visually distinguish between different IPs on the same port line? Options:
+•	No need to differentiate between IPs.
+4.	Tooltip Information: When hovering over a port line, should the tooltip show:
+•	All IPs that have that port open at that specific time point?
+1.	All IPs that report that port being opened during that normalized day should show up when hovering over the port line.  
+•	Additional info like service names for each IP?
+1.	No
+5.	Empty State: What should be displayed when:
+•	No targets are selected via checkboxes?
+1.	No ports would show as open if no targets are selected.
+•	Selected targets have no scan history?
+1.	If no scan history, no ports would show as open for that specific IP.
+•	All selected targets have failed scans only?
+1.	Only targets with open ports would show and plotted on the graph.
+6.	Chart Legend: Should I show a legend that lists:
+•	Port numbers with their colors?
+1.	Yes just like “View” chart. 
+•	IP addresses included in the current view?
+1.	No
+
+Do not make any code changes. Tell me what you are going to do. What questions do you have to complete these changes?

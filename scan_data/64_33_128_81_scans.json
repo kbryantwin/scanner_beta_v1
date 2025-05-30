@@ -2,6 +2,171 @@
   {
     "success": true,
     "ip_address": "64.33.128.81",
+    "timestamp": "2025-05-30T18:06:32.348906",
+    "scan_time": "55.00",
+    "open_ports": [
+      {
+        "port": 21,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "ftp",
+        "version": "",
+        "product": "Pure-FTPd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:pureftpd:pure-ftpd"
+      },
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Apache httpd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:apache:http_server"
+      },
+      {
+        "port": 443,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "http",
+        "version": "",
+        "product": "Apache httpd",
+        "extrainfo": "",
+        "conf": "10",
+        "cpe": "cpe:/a:apache:http_server"
+      },
+      {
+        "port": 37861,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "status",
+        "version": "1",
+        "product": "",
+        "extrainfo": "RPC #100024",
+        "conf": "10",
+        "cpe": ""
+      },
+      {
+        "port": 41607,
+        "protocol": "tcp",
+        "state": "open",
+        "service": "nlockmgr",
+        "version": "1-4",
+        "product": "",
+        "extrainfo": "RPC #100021",
+        "conf": "10",
+        "cpe": ""
+      }
+    ],
+    "host_info": {
+      "state": "up",
+      "reason": "user-set",
+      "hostname": "64-33-128-81.airstreamcomm.net",
+      "os": {
+        "name": "",
+        "family": "",
+        "generation": "",
+        "type": "",
+        "vendor": "",
+        "accuracy": 0
+      },
+      "vendor": {}
+    },
+    "raw_result": {
+      "nmap": {
+        "command_line": "nmap -oX - -p 1-65535 -sT -Pn -sV --open 64.33.128.81",
+        "scaninfo": {
+          "tcp": {
+            "method": "connect",
+            "services": "1-65535"
+          }
+        },
+        "scanstats": {
+          "timestr": "Fri May 30 18:06:32 2025",
+          "elapsed": "55.00",
+          "uphosts": "1",
+          "downhosts": "0",
+          "totalhosts": "1"
+        }
+      },
+      "scan": {
+        "64.33.128.81": {
+          "hostnames": [
+            {
+              "name": "64-33-128-81.airstreamcomm.net",
+              "type": "PTR"
+            }
+          ],
+          "addresses": {
+            "ipv4": "64.33.128.81"
+          },
+          "vendor": {},
+          "status": {
+            "state": "up",
+            "reason": "user-set"
+          },
+          "tcp": {
+            "21": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "ftp",
+              "product": "Pure-FTPd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:pureftpd:pure-ftpd"
+            },
+            "80": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Apache httpd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:apache:http_server"
+            },
+            "443": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "http",
+              "product": "Apache httpd",
+              "version": "",
+              "extrainfo": "",
+              "conf": "10",
+              "cpe": "cpe:/a:apache:http_server"
+            },
+            "37861": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "status",
+              "product": "",
+              "version": "1",
+              "extrainfo": "RPC #100024",
+              "conf": "10",
+              "cpe": ""
+            },
+            "41607": {
+              "state": "open",
+              "reason": "syn-ack",
+              "name": "nlockmgr",
+              "product": "",
+              "version": "1-4",
+              "extrainfo": "RPC #100021",
+              "conf": "10",
+              "cpe": ""
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "success": true,
+    "ip_address": "64.33.128.81",
     "timestamp": "2025-05-29T14:09:33.300268",
     "scan_time": "56.66",
     "open_ports": [
