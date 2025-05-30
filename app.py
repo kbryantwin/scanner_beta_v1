@@ -545,9 +545,16 @@ def get_aggregate_port_history():
     try:
         user_id = g.current_user['id']
         days = int(request.args.get('days', 7))
+        enabled_target_ids = request.args.get('target_ids', '')
+        
+        # Parse enabled target IDs
+        if enabled_target_ids:
+            target_ids = [int(tid) for tid in enabled_target_ids.split(',') if tid.strip()]
+        else:
+            target_ids = []
         
         # Get aggregate port history
-        aggregate_data = user_scan_manager.get_aggregate_port_history(user_id, days)
+        aggregate_data = user_scan_manager.get_aggregate_port_history(user_id, days, target_ids)
         
         return jsonify(aggregate_data)
         

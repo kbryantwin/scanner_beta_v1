@@ -418,20 +418,25 @@ class UserScanManager:
             logger.error(f"Failed to get port changes: {e}")
             return []
     
-    def get_aggregate_port_history(self, user_id: int, days: int = 7) -> Dict[str, Any]:
-        """Get aggregate port history for all user targets"""
+    def get_aggregate_port_history(self, user_id: int, days: int = 7, enabled_target_ids: List[int] = None) -> Dict[str, Any]:
+        """Get aggregate port history for selected user targets"""
         try:
             # Ensure database connection
             self.ensure_connection()
             
             cursor = self.conn.cursor()
             
-            # Get enabled target IDs from request (simulated from localStorage)
-            # For now, get all active targets
-            cursor.execute("""
-                SELECT id, ip_address FROM user_scan_targets
-                WHERE user_id = %s AND is_active = TRUE
-            """, (user_id,))
+            # If no specific target IDs provided, get all active targets
+            if enabled_target_ids:
+                cursor.execute("""
+                    SELECT id, ip_address FROM user_scan_targets
+                    WHERE user_id = %s AND is_active = TRUE AND id = ANY(%s)
+                """, (user_id, enabled_target_ids))
+            else:
+                cursor.execute("""
+                    SELECT id, ip_address FROM user_scan_targets
+                    WHERE user_id = %s AND is_active = TRUE
+                """, (user_id,))
             
             targets = cursor.fetchall()
             target_ids = [t[0] for t in targets]

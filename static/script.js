@@ -31,6 +31,15 @@ function initializeApplication() {
     // Initialize keyboard shortcuts
     initializeKeyboardShortcuts();
     
+    // Initialize dashboard-specific features
+    if (window.location.pathname === '/' || window.location.pathname === '/dashboard') {
+        // Initialize checkboxes first, then chart
+        setTimeout(() => {
+            initializeTargetCheckboxes();
+            initializeAggregatePortHistoryChart();
+        }, 100);
+    }
+    
     console.log('Network Monitoring Tool initialized successfully');
 }
 
@@ -860,7 +869,7 @@ function initializeAggregatePortHistoryChart() {
     
     // Function to load chart data
     function loadAggregateChart() {
-        const days = timeRangeSelect.value;
+        const days = timeRangeSelect ? timeRangeSelect.value : 7;
         const enabledTargets = getEnabledTargetIds();
         
         if (enabledTargets.length === 0) {
@@ -876,7 +885,8 @@ function initializeAggregatePortHistoryChart() {
             <p class="text-muted mt-2">Loading aggregate port history data...</p>
         `;
         
-        fetch(`/api/aggregate_port_history?days=${days}`)
+        const targetIdsParam = enabledTargets.join(',');
+        fetch(`/api/aggregate_port_history?days=${days}&target_ids=${targetIdsParam}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
