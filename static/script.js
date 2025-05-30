@@ -654,10 +654,24 @@ function createPortHistoryChart(data, canvas) {
         };
     });
     
+    // Prepare labels from timestamps
+    const labels = data.timeline.map(timestamp => {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: '2-digit'
+        }) + ' ' + date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    });
+
     // Create chart
     window.portHistoryChart = new Chart(ctx, {
         type: 'line',
         data: {
+            labels: labels,
             datasets: datasets
         },
         options: {
@@ -669,20 +683,12 @@ function createPortHistoryChart(data, canvas) {
             },
             scales: {
                 x: {
-                    type: 'time',
-                    time: {
-                        parser: 'YYYY-MM-DDTHH:mm:ss.SSSSSS',
-                        displayFormats: {
-                            minute: 'MMM DD HH:mm',
-                            hour: 'MMM DD HH:mm',
-                            day: 'MMM DD',
-                            week: 'MMM DD',
-                            month: 'MMM YYYY'
-                        }
-                    },
                     title: {
                         display: true,
                         text: 'Scan Time'
+                    },
+                    ticks: {
+                        maxTicksLimit: 10
                     }
                 },
                 y: {
@@ -709,7 +715,17 @@ function createPortHistoryChart(data, canvas) {
                 tooltip: {
                     callbacks: {
                         title: function(context) {
-                            return 'Scan Time: ' + moment(context[0].parsed.x).format('MMM DD, YYYY HH:mm');
+                            const timestamp = data.timeline[context[0].dataIndex];
+                            const date = new Date(timestamp);
+                            return 'Scan Time: ' + date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: '2-digit',
+                                year: 'numeric'
+                            }) + ' ' + date.toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                            });
                         },
                         label: function(context) {
                             const port = context.dataset.label.replace('Port ', '');
@@ -718,8 +734,26 @@ function createPortHistoryChart(data, canvas) {
                             
                             let tooltip = `${context.dataset.label}: ${status}`;
                             if (portInfo) {
-                                tooltip += `\nFirst seen: ${moment(portInfo.first_seen).format('MMM DD, YYYY HH:mm')}`;
-                                tooltip += `\nLast seen: ${moment(portInfo.last_seen).format('MMM DD, YYYY HH:mm')}`;
+                                const firstSeen = new Date(portInfo.first_seen);
+                                const lastSeen = new Date(portInfo.last_seen);
+                                tooltip += `\nFirst seen: ${firstSeen.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: '2-digit',
+                                    year: 'numeric'
+                                })} ${firstSeen.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                })}`;
+                                tooltip += `\nLast seen: ${lastSeen.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: '2-digit',
+                                    year: 'numeric'
+                                })} ${lastSeen.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: false
+                                })}`;
                             }
                             
                             return tooltip.split('\n');
