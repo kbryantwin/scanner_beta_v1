@@ -845,6 +845,399 @@ function togglePortVisibility(datasetIndex, chipElement) {
     }
 }
 
+/**
+ * Initialize aggregate port history chart
+ */
+function initializeAggregatePortHistoryChart() {
+    const chartCanvas = document.getElementById('aggregate-port-history-chart');
+    const loadingElement = document.getElementById('aggregate-chart-loading');
+    const timeRangeSelect = document.getElementById('time-range-select');
+    
+    if (!chartCanvas || !loadingElement) {
+        console.error('Aggregate chart elements not found');
+        return;
+    }
+    
+    // Function to load chart data
+    function loadAggregateChart() {
+        const days = timeRangeSelect.value;
+        const enabledTargets = getEnabledTargetIds();
+        
+        if (enabledTargets.length === 0) {
+            loadingElement.innerHTML = '<p class="text-muted text-center">No targets selected. Please select targets to view aggregate data.</p>';
+            return;
+        }
+        
+        loadingElement.style.display = 'block';
+        loadingElement.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading chart...</span>
+            </div>
+            <p class="text-muted mt-2">Loading aggregate port history data...</p>
+        `;
+        
+        fetch(`/api/aggregate_port_history?days=${days}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (!data.port_list || data.port_list.length === 0) {
+                    loadingElement.innerHTML = '<p class="text-muted text-center">No port history data available for selected targets.</p>';
+                    return;
+                }
+                
+                createAggregatePortHistoryChart(data, chartCanvas);
+                createAggregatePortToggles(data.port_list, data.ports);
+                loadingElement.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error loading aggregate port history:', error);
+                loadingElement.innerHTML = '<div class="alert alert-danger">Error loading aggregate port history data.</div>';
+            });
+    }
+    
+    // Load initial chart
+    loadAggregateChart();
+    
+    // Reload chart when time range changes
+    if (timeRangeSelect) {
+        timeRangeSelect.addEventListener('change', loadAggregateChart);
+    }
+    
+    // Store reload function globally for checkbox changes
+    window.reloadAggregateChart = loadAggregateChart;
+}
+
+/**
+ * Create the aggregate port history chart
+ */
+function createAggregatePortHistoryChart(data, canvas) {
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.aggregatePortHistoryChart) {
+        window.aggregatePortHistoryChart.destroy();
+    }
+    
+    // Prepare datasets for each port
+    const datasets = data.port_list.map((port, index) => {
+        const color = TABLEAU_20_COLORS[index % TABLEAU_20_COLORS.length];
+        const portData = data.ports[port];
+        
+        return {
+            label: `Port ${port}`,
+            data: portData.data,
+            borderColor: color,
+            backgroundColor: color + '20',
+            borderWidth: 2,
+            pointBackgroundColor: color,
+            pointBorderColor: color,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            tension: 0,
+            stepped: false,
+            fill: false
+        };
+    });
+    
+    // Prepare labels from timeline
+    const labels = data.timeline.map(point => {
+        const date = new Date(point.date + 'T00:00:00');
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: '2-digit'
+        });
+    });
+    
+    // Create warning symbol annotations for no-data days
+    const annotations = {};
+    data.timeline.forEach((point, index) => {
+        if (point.no_data) {
+            annotations[`warning-${index}`] = {
+                type: 'point',
+                xValue: index,
+                yValue: 0,
+                backgroundColor: '#ffc107',
+                borderColor: '#ffc107',
+                borderWidth: 2,
+                radius: 8,
+                display: true,
+                label: {
+                    enabled: true,
+                    content: '⚠️',
+                    position: 'center'
+                }
+            };
+        }
+    });
+    
+    // Create chart
+    window.aggregatePortHistoryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    },
+                    ticks: {
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 2,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            if (value === 0) return 'Closed';
+                            if (value === 1) return 'Open';
+                            return '';
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Port Status'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const pointIndex = context[0].dataIndex;
+                            const timelinePoint = data.timeline[pointIndex];
+                            
+                            if (timelinePoint.no_data) {
+                                return 'No scan data available for this date';
+                            }
+                            
+                            const date = new Date(timelinePoint.date + 'T00:00:00');
+                            return 'Date: ' + date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: '2-digit',
+                                year: 'numeric'
+                            });
+                        },
+                        label: function(context) {
+                            const pointIndex = context.dataIndex;
+                            const timelinePoint = data.timeline[pointIndex];
+                            
+                            if (timelinePoint.no_data) {
+                                return 'No scan data available for this date';
+                            }
+                            
+                            const port = context.dataset.label.replace('Port ', '');
+                            const portInfo = timelinePoint.ports[port];
+                            const status = portInfo.status === 1 ? 'Open' : 'Closed';
+                            
+                            let tooltip = `${context.dataset.label}: ${status}`;
+                            
+                            if (portInfo.status === 1 && portInfo.ips.length > 0) {
+                                tooltip += `\nIPs: ${portInfo.ips.join(', ')}`;
+                            }
+                            
+                            return tooltip.split('\n');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Create aggregate port toggle chips
+ */
+function createAggregatePortToggles(portList, portsData) {
+    const toggleContainer = document.getElementById('aggregate-port-toggle-list');
+    if (!toggleContainer) return;
+    
+    toggleContainer.innerHTML = '';
+    
+    portList.forEach((port, index) => {
+        const color = TABLEAU_20_COLORS[index % TABLEAU_20_COLORS.length];
+        
+        const chip = document.createElement('div');
+        chip.className = 'port-toggle-chip';
+        chip.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            margin: 2px;
+            background-color: ${color};
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            user-select: none;
+            transition: opacity 0.2s ease;
+        `;
+        
+        const colorIndicator = document.createElement('span');
+        colorIndicator.style.cssText = `
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+            margin-right: 6px;
+        `;
+        
+        const label = document.createElement('span');
+        label.textContent = `Port ${port}`;
+        
+        chip.appendChild(colorIndicator);
+        chip.appendChild(label);
+        
+        // Add click handler to toggle port visibility
+        chip.addEventListener('click', function() {
+            toggleAggregatePortVisibility(index, chip);
+        });
+        
+        // Store initial state
+        chip.dataset.visible = 'true';
+        chip.dataset.datasetIndex = index;
+        
+        toggleContainer.appendChild(chip);
+    });
+}
+
+/**
+ * Toggle aggregate port visibility on chart
+ */
+function toggleAggregatePortVisibility(datasetIndex, chipElement) {
+    if (!window.aggregatePortHistoryChart) return;
+    
+    const chart = window.aggregatePortHistoryChart;
+    const isVisible = chipElement.dataset.visible === 'true';
+    
+    // Toggle dataset visibility
+    chart.data.datasets[datasetIndex].hidden = isVisible;
+    chart.update();
+    
+    // Update chip appearance
+    if (isVisible) {
+        chipElement.style.opacity = '0.4';
+        chipElement.dataset.visible = 'false';
+    } else {
+        chipElement.style.opacity = '1';
+        chipElement.dataset.visible = 'true';
+    }
+}
+
+/**
+ * Initialize target checkboxes
+ */
+function initializeTargetCheckboxes() {
+    const selectAllCheckbox = document.getElementById('select-all-targets');
+    const targetCheckboxes = document.querySelectorAll('.target-checkbox');
+    
+    // Load saved checkbox states from localStorage
+    loadCheckboxStates();
+    
+    // Select all checkbox handler
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            targetCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+                saveCheckboxState(checkbox);
+            });
+            
+            // Reload aggregate chart
+            if (window.reloadAggregateChart) {
+                window.reloadAggregateChart();
+            }
+        });
+    }
+    
+    // Individual checkbox handlers
+    targetCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            saveCheckboxState(this);
+            
+            // Update select all checkbox state
+            const allChecked = Array.from(targetCheckboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(targetCheckboxes).every(cb => !cb.checked);
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+            }
+            
+            // Reload aggregate chart
+            if (window.reloadAggregateChart) {
+                window.reloadAggregateChart();
+            }
+        });
+    });
+}
+
+/**
+ * Save checkbox state to localStorage
+ */
+function saveCheckboxState(checkbox) {
+    const targetId = checkbox.dataset.targetId;
+    const isChecked = checkbox.checked;
+    localStorage.setItem(`target-${targetId}`, isChecked.toString());
+}
+
+/**
+ * Load checkbox states from localStorage
+ */
+function loadCheckboxStates() {
+    const targetCheckboxes = document.querySelectorAll('.target-checkbox');
+    let anyUnchecked = false;
+    
+    targetCheckboxes.forEach(checkbox => {
+        const targetId = checkbox.dataset.targetId;
+        const savedState = localStorage.getItem(`target-${targetId}`);
+        
+        if (savedState !== null) {
+            checkbox.checked = savedState === 'true';
+        } else {
+            checkbox.checked = true; // Default to checked
+        }
+        
+        if (!checkbox.checked) {
+            anyUnchecked = true;
+        }
+    });
+    
+    // Update select all checkbox
+    const selectAllCheckbox = document.getElementById('select-all-targets');
+    if (selectAllCheckbox) {
+        const allChecked = Array.from(targetCheckboxes).every(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = anyUnchecked && !allChecked;
+    }
+}
+
+/**
+ * Get enabled target IDs
+ */
+function getEnabledTargetIds() {
+    const targetCheckboxes = document.querySelectorAll('.target-checkbox:checked');
+    return Array.from(targetCheckboxes).map(cb => cb.dataset.targetId);
+}
+
 // Export functions for global access
 window.NetworkMonitor = {
     showNotification,
@@ -853,5 +1246,6 @@ window.NetworkMonitor = {
     confirmAction,
     validateIpAddress,
     refreshRecentScans,
-    initializePortHistoryChart
+    initializePortHistoryChart,
+    initializeAggregatePortHistoryChart
 };

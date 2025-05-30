@@ -418,6 +418,177 @@ class UserScanManager:
             logger.error(f"Failed to get port changes: {e}")
             return []
     
+    def get_aggregate_port_history(self, user_id: int, days: int = 7) -> Dict[str, Any]:
+        """Get aggregate port history for all user targets"""
+        try:
+            # Ensure database connection
+            self.ensure_connection()
+            
+            cursor = self.conn.cursor()
+            
+            # Get enabled target IDs from request (simulated from localStorage)
+            # For now, get all active targets
+            cursor.execute("""
+                SELECT id, ip_address FROM user_scan_targets
+                WHERE user_id = %s AND is_active = TRUE
+            """, (user_id,))
+            
+            targets = cursor.fetchall()
+            target_ids = [t[0] for t in targets]
+            target_ips = {t[0]: str(t[1]) for t in targets}
+            
+            if not target_ids:
+                return {
+                    'ports': {},
+                    'timeline': [],
+                    'port_list': [],
+                    'target_ips': {}
+                }
+            
+            # Get scan results for the date range
+            cursor.execute("""
+                SELECT usr.target_id, usr.ip_address, 
+                       DATE(usr.timestamp) as scan_date,
+                       usr.timestamp, usr.success,
+                       array_agg(upr.port) as ports
+                FROM user_scan_results usr
+                LEFT JOIN user_port_results upr ON usr.id = upr.scan_result_id
+                WHERE usr.user_id = %s 
+                AND usr.target_id = ANY(%s)
+                AND usr.timestamp >= CURRENT_DATE - INTERVAL '%s days'
+                AND usr.success = TRUE
+                GROUP BY usr.target_id, usr.ip_address, DATE(usr.timestamp), usr.timestamp, usr.success
+                ORDER BY scan_date, usr.timestamp
+            """, (user_id, target_ids, days))
+            
+            scan_results = cursor.fetchall()
+            
+            if not scan_results:
+                return {
+                    'ports': {},
+                    'timeline': [],
+                    'port_list': [],
+                    'target_ips': target_ips
+                }
+            
+            # Process data by date (ignore time)
+            daily_data = {}
+            all_ports = set()
+            
+            for row in scan_results:
+                target_id, ip_address, scan_date, timestamp, success, ports = row
+                ports = [p for p in (ports or []) if p is not None]
+                
+                date_str = scan_date.strftime('%Y-%m-%d')
+                
+                if date_str not in daily_data:
+                    daily_data[date_str] = {}
+                
+                # Aggregate ports by date (if any scan shows port open that day, mark as open)
+                for port in ports:
+                    all_ports.add(port)
+                    if port not in daily_data[date_str]:
+                        daily_data[date_str][port] = set()
+                    daily_data[date_str][port].add(str(ip_address))
+            
+            # Sort ports and dates
+            sorted_ports = sorted(list(all_ports))
+            sorted_dates = sorted(daily_data.keys())
+            
+            # Create timeline data
+            timeline = []
+            port_data = {}
+            
+            # Initialize port data
+            for port in sorted_ports:
+                port_data[port] = {
+                    'first_seen': None,
+                    'last_seen': None,
+                    'data': []
+                }
+            
+            # Generate complete date range
+            from datetime import datetime, timedelta, date
+            start_date = date.today() - timedelta(days=days-1)
+            complete_dates = []
+            
+            for i in range(days):
+                current_date = start_date + timedelta(days=i)
+                complete_dates.append(current_date.strftime('%Y-%m-%d'))
+            
+            # Process each date
+            for date_str in complete_dates:
+                has_any_data = date_str in daily_data
+                
+                # Check if this date has no scan data for any target
+                if not has_any_data:
+                    timeline.append({
+                        'date': date_str,
+                        'timestamp': date_str,
+                        'no_data': True,
+                        'ports': {}
+                    })
+                    
+                    # Add zero data points for chart
+                    for port in sorted_ports:
+                        port_data[port]['data'].append({
+                            'x': date_str,
+                            'y': 0
+                        })
+                    continue
+                
+                day_ports = daily_data[date_str]
+                timeline_point = {
+                    'date': date_str,
+                    'timestamp': date_str,
+                    'no_data': False,
+                    'ports': {}
+                }
+                
+                # For each port, check if it was open on this date
+                for port in sorted_ports:
+                    if port in day_ports:
+                        timeline_point['ports'][port] = {
+                            'status': 1,
+                            'ips': list(day_ports[port])
+                        }
+                        port_data[port]['data'].append({
+                            'x': date_str,
+                            'y': 1
+                        })
+                        
+                        # Update first/last seen
+                        if port_data[port]['first_seen'] is None:
+                            port_data[port]['first_seen'] = date_str
+                        port_data[port]['last_seen'] = date_str
+                    else:
+                        timeline_point['ports'][port] = {
+                            'status': 0,
+                            'ips': []
+                        }
+                        port_data[port]['data'].append({
+                            'x': date_str,
+                            'y': 0
+                        })
+                
+                timeline.append(timeline_point)
+            
+            return {
+                'ports': port_data,
+                'timeline': timeline,
+                'port_list': sorted_ports,
+                'target_ips': target_ips
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get aggregate port history: {e}")
+            return {
+                'ports': {},
+                'timeline': [],
+                'port_list': [],
+                'target_ips': {}
+            }
+    
     def close(self):
         """Close database connection"""
         if self.conn:

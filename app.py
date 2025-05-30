@@ -538,6 +538,23 @@ def get_port_history(ip):
         logger.error(f"Error getting port history for {ip}: {e}")
         return jsonify({'error': str(e)})
 
+@app.route('/api/aggregate_port_history')
+@login_required
+def get_aggregate_port_history():
+    """API endpoint to get aggregate port timeline data for dashboard"""
+    try:
+        user_id = g.current_user['id']
+        days = int(request.args.get('days', 7))
+        
+        # Get aggregate port history
+        aggregate_data = user_scan_manager.get_aggregate_port_history(user_id, days)
+        
+        return jsonify(aggregate_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting aggregate port history: {e}")
+        return jsonify({'error': str(e)})
+
 @app.errorhandler(404)
 def not_found_error(error):
     """Handle 404 errors"""
