@@ -459,6 +459,85 @@ def get_port_changes(ip):
         logger.error(f"Error getting port changes for {ip}: {e}")
         return jsonify({'error': str(e)})
 
+@app.route('/api/port_history/<ip>')
+def get_port_history(ip):
+    """API endpoint to get port timeline data for chart"""
+    try:
+        # Get scan history for this IP
+        scan_history = data_manager.get_scan_history(ip)
+        
+        if not scan_history:
+            return jsonify({'ports': {}, 'timeline': []})
+        
+        # Process successful scans only
+        successful_scans = [scan for scan in scan_history if scan.get('success')]
+        
+        if not successful_scans:
+            return jsonify({'ports': {}, 'timeline': []})
+        
+        # Get all unique ports that have been open at least once
+        all_ports = set()
+        for scan in successful_scans:
+            open_ports = set(port['port'] for port in scan.get('open_ports', []))
+            all_ports.update(open_ports)
+        
+        # Sort ports numerically
+        sorted_ports = sorted(list(all_ports))
+        
+        # Create timeline data
+        timeline = []
+        port_data = {}
+        
+        # Initialize port data with metadata
+        for port in sorted_ports:
+            first_seen = None
+            last_seen = None
+            
+            # Find first and last seen times
+            for scan in reversed(successful_scans):  # Oldest first
+                open_ports = set(port['port'] for port in scan.get('open_ports', []))
+                if port in open_ports:
+                    if first_seen is None:
+                        first_seen = scan['timestamp']
+                    last_seen = scan['timestamp']
+            
+            port_data[port] = {
+                'first_seen': first_seen,
+                'last_seen': last_seen,
+                'data': []
+            }
+        
+        # Process each scan to create timeline points
+        for scan in reversed(successful_scans):  # Process oldest to newest
+            timestamp = scan['timestamp']
+            open_ports = set(port['port'] for port in scan.get('open_ports', []))
+            
+            timeline_point = {
+                'timestamp': timestamp,
+                'ports': {}
+            }
+            
+            # For each port, record if it was open (1) or closed (0)
+            for port in sorted_ports:
+                status = 1 if port in open_ports else 0
+                timeline_point['ports'][port] = status
+                port_data[port]['data'].append({
+                    'x': timestamp,
+                    'y': status
+                })
+            
+            timeline.append(timeline_point)
+        
+        return jsonify({
+            'ports': port_data,
+            'timeline': timeline,
+            'port_list': sorted_ports
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting port history for {ip}: {e}")
+        return jsonify({'error': str(e)})
+
 @app.errorhandler(404)
 def not_found_error(error):
     """Handle 404 errors"""

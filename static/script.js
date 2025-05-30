@@ -582,6 +582,235 @@ window.addEventListener('beforeunload', function() {
     }
 });
 
+/**
+ * Tableau 20 color palette
+ */
+const TABLEAU_20_COLORS = [
+    '#4E79A7', '#F28E2C', '#E15759', '#76B7B2', '#59A14F',
+    '#EDC949', '#AF7AA1', '#FF9D9A', '#9C755F', '#BAB0AB',
+    '#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD',
+    '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF'
+];
+
+/**
+ * Initialize port history chart
+ */
+function initializePortHistoryChart(ipAddress) {
+    const chartCanvas = document.getElementById('port-history-chart');
+    const loadingElement = document.getElementById('chart-loading');
+    
+    if (!chartCanvas || !loadingElement) {
+        console.error('Chart elements not found');
+        return;
+    }
+    
+    // Fetch port history data
+    fetch(`/api/port_history/${encodeURIComponent(ipAddress)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            if (!data.port_list || data.port_list.length === 0) {
+                loadingElement.innerHTML = '<p class="text-muted text-center">No port history data available.</p>';
+                return;
+            }
+            
+            createPortHistoryChart(data, chartCanvas);
+            createPortToggles(data.port_list, data.ports);
+            loadingElement.style.display = 'none';
+        })
+        .catch(error => {
+            console.error('Error loading port history:', error);
+            loadingElement.innerHTML = '<div class="alert alert-danger">Error loading port history data.</div>';
+        });
+}
+
+/**
+ * Create the port history chart
+ */
+function createPortHistoryChart(data, canvas) {
+    const ctx = canvas.getContext('2d');
+    
+    // Prepare datasets for each port
+    const datasets = data.port_list.map((port, index) => {
+        const color = TABLEAU_20_COLORS[index % TABLEAU_20_COLORS.length];
+        const portData = data.ports[port];
+        
+        return {
+            label: `Port ${port}`,
+            data: portData.data,
+            borderColor: color,
+            backgroundColor: color + '20', // Add transparency
+            borderWidth: 2,
+            pointBackgroundColor: color,
+            pointBorderColor: color,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            tension: 0, // Straight lines
+            stepped: false,
+            fill: false
+        };
+    });
+    
+    // Create chart
+    window.portHistoryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        parser: 'YYYY-MM-DDTHH:mm:ss.SSSSSS',
+                        displayFormats: {
+                            minute: 'MMM DD HH:mm',
+                            hour: 'MMM DD HH:mm',
+                            day: 'MMM DD',
+                            week: 'MMM DD',
+                            month: 'MMM YYYY'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Scan Time'
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 2,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            if (value === 0) return 'Closed';
+                            if (value === 1) return 'Open';
+                            return ''; // Hide label for value 2
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Port Status'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false // We'll use custom toggles
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'Scan Time: ' + moment(context[0].parsed.x).format('MMM DD, YYYY HH:mm');
+                        },
+                        label: function(context) {
+                            const port = context.dataset.label.replace('Port ', '');
+                            const status = context.parsed.y === 1 ? 'Open' : 'Closed';
+                            const portInfo = data.ports[port];
+                            
+                            let tooltip = `${context.dataset.label}: ${status}`;
+                            if (portInfo) {
+                                tooltip += `\nFirst seen: ${moment(portInfo.first_seen).format('MMM DD, YYYY HH:mm')}`;
+                                tooltip += `\nLast seen: ${moment(portInfo.last_seen).format('MMM DD, YYYY HH:mm')}`;
+                            }
+                            
+                            return tooltip.split('\n');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Create port toggle chips
+ */
+function createPortToggles(portList, portsData) {
+    const toggleContainer = document.getElementById('port-toggle-list');
+    if (!toggleContainer) return;
+    
+    toggleContainer.innerHTML = '';
+    
+    portList.forEach((port, index) => {
+        const color = TABLEAU_20_COLORS[index % TABLEAU_20_COLORS.length];
+        
+        const chip = document.createElement('div');
+        chip.className = 'port-toggle-chip';
+        chip.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            margin: 2px;
+            background-color: ${color};
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            user-select: none;
+            transition: opacity 0.2s ease;
+        `;
+        
+        const colorIndicator = document.createElement('span');
+        colorIndicator.style.cssText = `
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+            margin-right: 6px;
+        `;
+        
+        const label = document.createElement('span');
+        label.textContent = `Port ${port}`;
+        
+        chip.appendChild(colorIndicator);
+        chip.appendChild(label);
+        
+        // Add click handler to toggle port visibility
+        chip.addEventListener('click', function() {
+            togglePortVisibility(index, chip);
+        });
+        
+        // Store initial state
+        chip.dataset.visible = 'true';
+        chip.dataset.datasetIndex = index;
+        
+        toggleContainer.appendChild(chip);
+    });
+}
+
+/**
+ * Toggle port visibility on chart
+ */
+function togglePortVisibility(datasetIndex, chipElement) {
+    if (!window.portHistoryChart) return;
+    
+    const chart = window.portHistoryChart;
+    const isVisible = chipElement.dataset.visible === 'true';
+    
+    // Toggle dataset visibility
+    chart.data.datasets[datasetIndex].hidden = isVisible;
+    chart.update();
+    
+    // Update chip appearance
+    if (isVisible) {
+        chipElement.style.opacity = '0.4';
+        chipElement.dataset.visible = 'false';
+    } else {
+        chipElement.style.opacity = '1';
+        chipElement.dataset.visible = 'true';
+    }
+}
+
 // Export functions for global access
 window.NetworkMonitor = {
     showNotification,
@@ -589,5 +818,6 @@ window.NetworkMonitor = {
     exportScanData,
     confirmAction,
     validateIpAddress,
-    refreshRecentScans
+    refreshRecentScans,
+    initializePortHistoryChart
 };

@@ -269,6 +269,40 @@
                         </div>
                         {% endif %}
 
+                        <!-- Port History Chart -->
+                        {% if scan_history and scan_history|length > 1 %}
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i data-feather="trending-up" class="me-2"></i>
+                                    Port History Timeline
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- Port Toggle Chips -->
+                                <div id="port-toggles" class="mb-3">
+                                    <small class="text-muted d-block mb-2">Toggle ports to show/hide on chart:</small>
+                                    <div id="port-toggle-list" class="d-flex flex-wrap gap-2">
+                                        <!-- Port toggle chips will be inserted here by JavaScript -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Chart Container -->
+                                <div class="chart-container" style="position: relative; height: 400px;">
+                                    <canvas id="port-history-chart"></canvas>
+                                </div>
+                                
+                                <!-- Chart Loading -->
+                                <div id="chart-loading" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading chart...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Loading port history data...</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                         {% else %}
                         <!-- Scan Failed -->
                         <div class="alert alert-danger">
@@ -383,6 +417,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.29.0/dist/feather.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         // Initialize Feather icons
@@ -408,6 +443,13 @@
                 }
             };
         }
+
+        // Initialize port history chart if available
+        {% if scan_history and scan_history|length > 1 %}
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePortHistoryChart('{{ ip_address }}');
+        });
+        {% endif %}
 
         // Check scan status if scan is running
         {% if scan_status and scan_status.status == 'running' %}
