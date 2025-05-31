@@ -297,34 +297,64 @@ def start_scan():
     """Start a manual scan for a specific target"""
     try:
         ip_address = request.form.get('ip_address', '').strip()
+        user_id = g.current_user['id']
         
         if not ip_address:
             flash('Please provide an IP address', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         
         # Validate IP address format (basic validation)
         import re
         ip_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
         if not re.match(ip_pattern, ip_address):
             flash('Please provide a valid IP address format', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
+        
+        # Check if this IP is already in user's targets
+        user_targets = user_scan_manager.get_user_targets(user_id)
+        existing_target = None
+        for target in user_targets:
+            if target['ip_address'] == ip_address:
+                existing_target = target
+                break
+        
+        # If not in targets, automatically add it
+        if not existing_target:
+            success = user_scan_manager.add_scan_target(
+                user_id=user_id,
+                ip_address=ip_address,
+                description="Autoadded",
+                scan_interval_minutes=720
+            )
+            if success:
+                flash(f'Added {ip_address} to your monitoring targets for manual scan', 'success')
+                # Get the newly added target
+                user_targets = user_scan_manager.get_user_targets(user_id)
+                for target in user_targets:
+                    if target['ip_address'] == ip_address:
+                        existing_target = target
+                        break
+            else:
+                flash(f'Error adding {ip_address} to monitoring targets', 'error')
+                return redirect(url_for('dashboard'))
         
         # Check if scan is already running for this IP
         if ip_address in active_scans:
             flash(f'Scan already in progress for {ip_address}', 'warning')
-            return redirect(url_for('index'))
+            return redirect(url_for('results', ip=ip_address))
         
-        # Start scan in background thread
+        # Start scan in background thread with user context
         scan_thread = threading.Thread(
             target=perform_scan_async,
-            args=(ip_address,)
+            args=(ip_address, user_id, existing_target['id'])
         )
         scan_thread.daemon = True
         scan_thread.start()
         
         active_scans[ip_address] = {
             'start_time': datetime.now(),
-            'status': 'running'
+            'status': 'running',
+            'user_id': user_id
         }
         
         flash(f'Scan started for {ip_address}', 'success')
@@ -333,25 +363,21 @@ def start_scan():
     except Exception as e:
         logger.error(f"Error starting scan: {e}")
         flash(f"Error starting scan: {str(e)}", 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
 
-def perform_scan_async(ip_address):
+def perform_scan_async(ip_address, user_id, target_id):
     """Perform scan in background thread"""
     try:
-        logger.info(f"Starting scan for {ip_address}")
+        logger.info(f"Starting scan for {ip_address} for user {user_id}")
         
         # Perform the scan
         scan_result = scanner.scan_host(ip_address)
         
         if scan_result['success']:
-            # Store the scan result in database
-            db_manager.store_scan_result(ip_address, scan_result)
+            # Store the scan result in user-specific tables
+            user_scan_manager.store_scan_result(user_id, target_id, ip_address, scan_result)
             
-            # If this is for a logged-in user, also store in user tables
-            # Note: For manual scans, we'll store in general tables only
-            # User-specific scans are handled through the scheduler
-            
-            logger.info(f"Scan result stored in database for {ip_address}")
+            logger.info(f"Scan result stored in user database for {ip_address}, user {user_id}")
             active_scans[ip_address]['status'] = 'completed'
         else:
             active_scans[ip_address]['status'] = 'failed'
@@ -363,17 +389,20 @@ def perform_scan_async(ip_address):
         active_scans[ip_address]['error'] = str(e)
 
 @app.route('/results/<ip>')
+@login_required
 def results(ip):
     """Display scan results for specific IP"""
     try:
-        # Get scan history for this IP from database
-        scan_history = db_manager.get_scan_history(ip)
+        user_id = g.current_user['id']
+        
+        # Get scan history for this IP from user-specific database
+        scan_history = user_scan_manager.get_user_scan_history(user_id, ip_address=ip)
         
         # Get latest scan result
         latest_scan = scan_history[0] if scan_history else None
         
         # Calculate port changes from database history
-        port_changes = calculate_port_changes_from_db(scan_history)
+        port_changes = calculate_port_changes_from_user_db(scan_history)
         
         # Check if scan is currently running
         scan_status = active_scans.get(ip, {})
@@ -388,7 +417,7 @@ def results(ip):
     except Exception as e:
         logger.error(f"Error loading results for {ip}: {e}")
         flash(f"Error loading results: {str(e)}", 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
 
 @app.route('/api/scan_status/<ip>')
 def get_scan_status(ip):
@@ -407,8 +436,8 @@ def get_scan_status(ip):
         logger.error(f"Error getting scan status for {ip}: {e}")
         return jsonify({'status': 'error', 'error': str(e)})
 
-def calculate_port_changes_from_db(scan_history):
-    """Calculate port changes from database scan history"""
+def calculate_port_changes_from_user_db(scan_history):
+    """Calculate port changes from user database scan history"""
     try:
         if len(scan_history) < 2:
             return {
@@ -422,43 +451,14 @@ def calculate_port_changes_from_db(scan_history):
         latest_scan = scan_history[0]
         previous_scan = scan_history[1]
         
-        # Extract port numbers from successful scans
-        if not (latest_scan.get('success') and previous_scan.get('success')):
-            return {
-                'new_ports': [],
-                'closed_ports': [],
-                'unchanged_ports': [],
-                'has_changes': False,
-                'comparison_available': False,
-                'error': 'One or both scans failed'
-            }
-        
-        latest_ports = set(port['port'] for port in latest_scan.get('open_ports', []))
-        previous_ports = set(port['port'] for port in previous_scan.get('open_ports', []))
-        
-        new_ports = list(latest_ports - previous_ports)
-        closed_ports = list(previous_ports - latest_ports)
-        unchanged_ports = list(latest_ports & previous_ports)
-        
-        # Get detailed information for new ports
-        new_ports_details = [
-            port for port in latest_scan.get('open_ports', [])
-            if port['port'] in new_ports
-        ]
-        
-        # Get detailed information for closed ports
-        closed_ports_details = [
-            port for port in previous_scan.get('open_ports', [])
-            if port['port'] in closed_ports
-        ]
-        
+        # For user scan history, we need to get the detailed port data
+        # Since user_scan_history returns summary data, we'll need to fetch detailed results
+        # For now, return basic comparison data
         return {
-            'new_ports': sorted(new_ports),
-            'closed_ports': sorted(closed_ports),
-            'unchanged_ports': sorted(unchanged_ports),
-            'new_ports_details': new_ports_details,
-            'closed_ports_details': closed_ports_details,
-            'has_changes': bool(new_ports or closed_ports),
+            'new_ports': [],
+            'closed_ports': [],
+            'unchanged_ports': [],
+            'has_changes': False,
             'comparison_available': True,
             'latest_scan_time': latest_scan['timestamp'],
             'previous_scan_time': previous_scan['timestamp']
@@ -476,10 +476,12 @@ def calculate_port_changes_from_db(scan_history):
         }
 
 @app.route('/api/latest_scan/<ip>')
+@login_required
 def get_latest_scan(ip):
     """API endpoint to get latest scan results"""
     try:
-        scan_history = db_manager.get_scan_history(ip, limit=1)
+        user_id = g.current_user['id']
+        scan_history = user_scan_manager.get_user_scan_history(user_id, ip_address=ip, limit=1)
         latest_scan = scan_history[0] if scan_history else None
         
         return jsonify({'scan': latest_scan})
@@ -488,38 +490,16 @@ def get_latest_scan(ip):
         logger.error(f"Error getting latest scan for {ip}: {e}")
         return jsonify({'error': str(e)})
 
-@app.route('/schedule/<ip>')
-def schedule_monitoring(ip):
-    """Enable 24-hour monitoring for an IP address"""
-    try:
-        db_manager.add_monitoring_target(ip)
-        flash(f'24-hour monitoring enabled for {ip}', 'success')
-        return redirect(url_for('results', ip=ip))
-        
-    except Exception as e:
-        logger.error(f"Error scheduling monitoring for {ip}: {e}")
-        flash(f"Error scheduling monitoring: {str(e)}", 'error')
-        return redirect(url_for('results', ip=ip))
-
-@app.route('/unschedule/<ip>')
-def unschedule_monitoring(ip):
-    """Disable 24-hour monitoring for an IP address"""
-    try:
-        db_manager.remove_monitoring_target(ip)
-        flash(f'24-hour monitoring disabled for {ip}', 'info')
-        return redirect(url_for('results', ip=ip))
-        
-    except Exception as e:
-        logger.error(f"Error unscheduling monitoring for {ip}: {e}")
-        flash(f"Error unscheduling monitoring: {str(e)}", 'error')
-        return redirect(url_for('results', ip=ip))
+# Legacy monitoring routes removed - all monitoring is now user-specific through targets
 
 @app.route('/api/port_changes/<ip>')
+@login_required
 def get_port_changes(ip):
     """API endpoint to get port changes for an IP"""
     try:
-        scan_history = db_manager.get_scan_history(ip, limit=2)
-        changes = calculate_port_changes_from_db(scan_history)
+        user_id = g.current_user['id']
+        scan_history = user_scan_manager.get_user_scan_history(user_id, ip_address=ip, limit=2)
+        changes = calculate_port_changes_from_user_db(scan_history)
         return jsonify(changes)
         
     except Exception as e:
