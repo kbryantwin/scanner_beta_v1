@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import psycopg2
+import psycopg2.extras
 import os
 
 logger = logging.getLogger(__name__)
