@@ -127,9 +127,9 @@
                         
                         <small class="text-muted">
                             Comparison between 
-                            {{ port_changes.latest_scan_time[:19].replace('T', ' ') }} 
+                            {{ port_changes.latest_scan_time.strftime('%Y-%m-%d %H:%M:%S') }} 
                             and 
-                            {{ port_changes.previous_scan_time[:19].replace('T', ' ') }}
+                            {{ port_changes.previous_scan_time.strftime('%Y-%m-%d %H:%M:%S') }}
                         </small>
                     </div>
                 </div>
@@ -148,7 +148,7 @@
                             Latest Scan Results
                         </h5>
                         <small class="text-muted">
-                            Scanned on {{ latest_scan.timestamp[:19].replace('T', ' ') }}
+                            Scanned on {{ latest_scan.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
                         </small>
                     </div>
                     <div class="card-body">
@@ -343,7 +343,7 @@
                                 <tbody>
                                     {% for scan in scan_history %}
                                     <tr>
-                                        <td>{{ scan.timestamp[:19].replace('T', ' ') }}</td>
+                                        <td>{{ scan.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                         <td>
                                             {% if scan.success %}
                                                 <span class="badge bg-success">Success</span>
