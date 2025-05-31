@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, session, g
 from scanner import NetworkScanner
-from data_manager import ScanDataManager
 from scheduler import ScanScheduler
 from db_manager import DatabaseManager
 from auth import AuthManager
@@ -36,12 +35,11 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
 
 # Initialize components
 scanner = NetworkScanner()
-data_manager = ScanDataManager()
 db_manager = DatabaseManager()
 auth_manager = AuthManager()
 user_scan_manager = UserScanManager()
 email_manager = EmailManager()
-scheduler = ScanScheduler(scanner, data_manager)
+scheduler = ScanScheduler(scanner, db_manager)
 
 # Global variable to track active scans
 active_scans = {}
@@ -346,14 +344,14 @@ def perform_scan_async(ip_address):
         scan_result = scanner.scan_host(ip_address)
         
         if scan_result['success']:
-            # Store the scan result
-            data_manager.store_scan_result(ip_address, scan_result)
+            # Store the scan result in database
+            db_manager.store_scan_result(ip_address, scan_result)
             
-            # Check for port changes
-            changes = data_manager.check_port_changes(ip_address)
-            if changes['new_ports']:
-                logger.info(f"New ports detected for {ip_address}: {changes['new_ports']}")
+            # If this is for a logged-in user, also store in user tables
+            # Note: For manual scans, we'll store in general tables only
+            # User-specific scans are handled through the scheduler
             
+            logger.info(f"Scan result stored in database for {ip_address}")
             active_scans[ip_address]['status'] = 'completed'
         else:
             active_scans[ip_address]['status'] = 'failed'
@@ -368,14 +366,14 @@ def perform_scan_async(ip_address):
 def results(ip):
     """Display scan results for specific IP"""
     try:
-        # Get scan history for this IP
-        scan_history = data_manager.get_scan_history(ip)
+        # Get scan history for this IP from database
+        scan_history = db_manager.get_scan_history(ip)
         
         # Get latest scan result
         latest_scan = scan_history[0] if scan_history else None
         
-        # Get port changes
-        port_changes = data_manager.check_port_changes(ip)
+        # Calculate port changes from database history
+        port_changes = calculate_port_changes_from_db(scan_history)
         
         # Check if scan is currently running
         scan_status = active_scans.get(ip, {})
@@ -409,11 +407,79 @@ def get_scan_status(ip):
         logger.error(f"Error getting scan status for {ip}: {e}")
         return jsonify({'status': 'error', 'error': str(e)})
 
+def calculate_port_changes_from_db(scan_history):
+    """Calculate port changes from database scan history"""
+    try:
+        if len(scan_history) < 2:
+            return {
+                'new_ports': [],
+                'closed_ports': [],
+                'unchanged_ports': [],
+                'has_changes': False,
+                'comparison_available': False
+            }
+        
+        latest_scan = scan_history[0]
+        previous_scan = scan_history[1]
+        
+        # Extract port numbers from successful scans
+        if not (latest_scan.get('success') and previous_scan.get('success')):
+            return {
+                'new_ports': [],
+                'closed_ports': [],
+                'unchanged_ports': [],
+                'has_changes': False,
+                'comparison_available': False,
+                'error': 'One or both scans failed'
+            }
+        
+        latest_ports = set(port['port'] for port in latest_scan.get('open_ports', []))
+        previous_ports = set(port['port'] for port in previous_scan.get('open_ports', []))
+        
+        new_ports = list(latest_ports - previous_ports)
+        closed_ports = list(previous_ports - latest_ports)
+        unchanged_ports = list(latest_ports & previous_ports)
+        
+        # Get detailed information for new ports
+        new_ports_details = [
+            port for port in latest_scan.get('open_ports', [])
+            if port['port'] in new_ports
+        ]
+        
+        # Get detailed information for closed ports
+        closed_ports_details = [
+            port for port in previous_scan.get('open_ports', [])
+            if port['port'] in closed_ports
+        ]
+        
+        return {
+            'new_ports': sorted(new_ports),
+            'closed_ports': sorted(closed_ports),
+            'unchanged_ports': sorted(unchanged_ports),
+            'new_ports_details': new_ports_details,
+            'closed_ports_details': closed_ports_details,
+            'has_changes': bool(new_ports or closed_ports),
+            'comparison_available': True,
+            'latest_scan_time': latest_scan['timestamp'],
+            'previous_scan_time': previous_scan['timestamp']
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating port changes: {e}")
+        return {
+            'new_ports': [],
+            'closed_ports': [],
+            'unchanged_ports': [],
+            'has_changes': False,
+            'comparison_available': False,
+            'error': str(e)
+        }
+
 @app.route('/api/latest_scan/<ip>')
 def get_latest_scan(ip):
     """API endpoint to get latest scan results"""
     try:
-        scan_history = data_manager.get_scan_history(ip, limit=1)
+        scan_history = db_manager.get_scan_history(ip, limit=1)
         latest_scan = scan_history[0] if scan_history else None
         
         return jsonify({'scan': latest_scan})
@@ -426,7 +492,7 @@ def get_latest_scan(ip):
 def schedule_monitoring(ip):
     """Enable 24-hour monitoring for an IP address"""
     try:
-        scheduler.add_target(ip)
+        db_manager.add_monitoring_target(ip)
         flash(f'24-hour monitoring enabled for {ip}', 'success')
         return redirect(url_for('results', ip=ip))
         
@@ -439,7 +505,7 @@ def schedule_monitoring(ip):
 def unschedule_monitoring(ip):
     """Disable 24-hour monitoring for an IP address"""
     try:
-        scheduler.remove_target(ip)
+        db_manager.remove_monitoring_target(ip)
         flash(f'24-hour monitoring disabled for {ip}', 'info')
         return redirect(url_for('results', ip=ip))
         
@@ -452,7 +518,8 @@ def unschedule_monitoring(ip):
 def get_port_changes(ip):
     """API endpoint to get port changes for an IP"""
     try:
-        changes = data_manager.check_port_changes(ip)
+        scan_history = db_manager.get_scan_history(ip, limit=2)
+        changes = calculate_port_changes_from_db(scan_history)
         return jsonify(changes)
         
     except Exception as e:
@@ -463,8 +530,8 @@ def get_port_changes(ip):
 def get_port_history(ip):
     """API endpoint to get port timeline data for chart"""
     try:
-        # Get scan history for this IP
-        scan_history = data_manager.get_scan_history(ip)
+        # Get scan history for this IP from database
+        scan_history = db_manager.get_scan_history(ip)
         
         if not scan_history:
             return jsonify({'ports': {}, 'timeline': []})

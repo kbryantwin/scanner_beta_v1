@@ -12,14 +12,13 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from scanner import NetworkScanner
-from data_manager import ScanDataManager
 
 logger = logging.getLogger(__name__)
 
 class ScanScheduler:
     """Manages automated scanning schedule for multiple targets"""
     
-    def __init__(self, scanner: NetworkScanner, data_manager: ScanDataManager):
+    def __init__(self, scanner: NetworkScanner, db_manager):
         """
         Initialize the scheduler
         
@@ -28,7 +27,7 @@ class ScanScheduler:
             data_manager: ScanDataManager instance
         """
         self.scanner = scanner
-        self.data_manager = data_manager
+        self.db_manager = db_manager
         self.targets = {}  # Dict to store target IP addresses and their schedule info
         self.running = False
         self.check_interval = 300  # Check every 5 minutes for due scans
@@ -146,7 +145,7 @@ class ScanScheduler:
             
             if scan_result['success']:
                 # Store the scan result
-                self.data_manager.store_scan_result(ip_address, scan_result)
+                self.db_manager.store_scan_result(ip_address, scan_result)
                 
                 # Check for port changes and send notifications
                 changes = self.data_manager.check_port_changes(ip_address)
