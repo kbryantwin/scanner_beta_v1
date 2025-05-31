@@ -395,14 +395,14 @@ def results(ip):
     try:
         user_id = g.current_user['id']
         
+        # Get detailed latest scan result with port information
+        latest_scan = user_scan_manager.get_detailed_scan_result(user_id, ip)
+        
         # Get scan history for this IP from user-specific database
         scan_history = user_scan_manager.get_user_scan_history(user_id, ip_address=ip)
         
-        # Get latest scan result
-        latest_scan = scan_history[0] if scan_history else None
-        
         # Calculate port changes from database history
-        port_changes = calculate_port_changes_from_user_db(scan_history)
+        port_changes = calculate_port_changes_from_user_db_detailed(user_id, ip)
         
         # Check if scan is currently running
         scan_status = active_scans.get(ip, {})
@@ -466,6 +466,64 @@ def calculate_port_changes_from_user_db(scan_history):
         
     except Exception as e:
         logger.error(f"Error calculating port changes: {e}")
+        return {
+            'new_ports': [],
+            'closed_ports': [],
+            'unchanged_ports': [],
+            'has_changes': False,
+            'comparison_available': False,
+            'error': str(e)
+        }
+
+def calculate_port_changes_from_user_db_detailed(user_id, ip_address):
+    """Calculate port changes using detailed port data from user database"""
+    try:
+        # Get the last 2 successful scans for this IP
+        cursor = user_scan_manager.conn.cursor()
+        cursor.execute("""
+            SELECT usr.id, usr.timestamp,
+                   array_agg(upr.port ORDER BY upr.port) as ports
+            FROM user_scan_results usr
+            LEFT JOIN user_port_results upr ON usr.id = upr.scan_result_id
+            WHERE usr.user_id = %s AND usr.ip_address = %s AND usr.success = TRUE
+            GROUP BY usr.id, usr.timestamp
+            ORDER BY usr.timestamp DESC
+            LIMIT 2
+        """, (user_id, ip_address))
+        
+        results = cursor.fetchall()
+        
+        if len(results) < 2:
+            return {
+                'new_ports': [],
+                'closed_ports': [],
+                'unchanged_ports': [],
+                'has_changes': False,
+                'comparison_available': False
+            }
+        
+        latest_result = results[0]
+        previous_result = results[1]
+        
+        latest_ports = set(p for p in (latest_result[2] or []) if p is not None)
+        previous_ports = set(p for p in (previous_result[2] or []) if p is not None)
+        
+        new_ports = latest_ports - previous_ports
+        closed_ports = previous_ports - latest_ports
+        unchanged_ports = latest_ports & previous_ports
+        
+        return {
+            'new_ports': sorted(list(new_ports)),
+            'closed_ports': sorted(list(closed_ports)),
+            'unchanged_ports': sorted(list(unchanged_ports)),
+            'has_changes': bool(new_ports or closed_ports),
+            'comparison_available': True,
+            'latest_scan_time': latest_result[1],
+            'previous_scan_time': previous_result[1]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating detailed port changes: {e}")
         return {
             'new_ports': [],
             'closed_ports': [],

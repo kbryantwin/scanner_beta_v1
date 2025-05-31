@@ -158,7 +158,7 @@
                             <div class="col-md-3">
                                 <div class="card border-success">
                                     <div class="card-body text-center">
-                                        <h3 class="text-success">{{ latest_scan.open_ports|length }}</h3>
+                                        <h3 class="text-success">{{ latest_scan.open_ports_count or 0 }}</h3>
                                         <p class="card-text">Open Ports</p>
                                     </div>
                                 </div>
@@ -166,7 +166,7 @@
                             <div class="col-md-3">
                                 <div class="card border-info">
                                     <div class="card-body text-center">
-                                        <h3 class="text-info">{{ latest_scan.scan_time }}s</h3>
+                                        <h3 class="text-info">{{ latest_scan.scan_time or '0' }}s</h3>
                                         <p class="card-text">Scan Time</p>
                                     </div>
                                 </div>
@@ -174,7 +174,7 @@
                             <div class="col-md-3">
                                 <div class="card border-primary">
                                     <div class="card-body text-center">
-                                        <h3 class="text-primary">{{ latest_scan.host_info.get('state', 'unknown')|title }}</h3>
+                                        <h3 class="text-primary">{{ (latest_scan.host_state or 'unknown')|title }}</h3>
                                         <p class="card-text">Host State</p>
                                     </div>
                                 </div>
@@ -308,7 +308,7 @@
                                 <i data-feather="x-circle" class="me-2"></i>
                                 Scan Failed
                             </h6>
-                            <p class="mb-0">{{ latest_scan.error }}</p>
+                            <p class="mb-0">{{ latest_scan.error_message or 'Unknown error occurred during scan' }}</p>
                         </div>
                         {% endif %}
                     </div>
@@ -353,7 +353,7 @@
                                         </td>
                                         <td>
                                             {% if scan.success %}
-                                                <span class="badge bg-info">{{ scan.open_ports|length }}</span>
+                                                <span class="badge bg-info">{{ scan.open_ports_count or 0 }}</span>
                                             {% else %}
                                                 <span class="text-muted">-</span>
                                             {% endif %}
@@ -363,18 +363,14 @@
                                             {% if loop.index0 < scan_history|length - 1 %}
                                                 {% set prev_scan = scan_history[loop.index0 + 1] %}
                                                 {% if scan.success and prev_scan.success %}
-                                                    {% set current_ports = scan.open_ports|map(attribute='port')|list %}
-                                                    {% set prev_ports = prev_scan.open_ports|map(attribute='port')|list %}
-                                                    {% set new_ports = current_ports|reject('in', prev_ports)|list %}
-                                                    {% set closed_ports = prev_ports|reject('in', current_ports)|list %}
+                                                    {% set current_count = scan.open_ports_count or 0 %}
+                                                    {% set prev_count = prev_scan.open_ports_count or 0 %}
+                                                    {% set port_diff = current_count - prev_count %}
                                                     
-                                                    {% if new_ports or closed_ports %}
-                                                        {% if new_ports %}
-                                                            <span class="badge bg-danger me-1">+{{ new_ports|length }}</span>
-                                                        {% endif %}
-                                                        {% if closed_ports %}
-                                                            <span class="badge bg-info">-{{ closed_ports|length }}</span>
-                                                        {% endif %}
+                                                    {% if port_diff > 0 %}
+                                                        <span class="badge bg-danger me-1">+{{ port_diff }}</span>
+                                                    {% elif port_diff < 0 %}
+                                                        <span class="badge bg-info">{{ port_diff }}</span>
                                                     {% else %}
                                                         <span class="text-muted">No change</span>
                                                     {% endif %}

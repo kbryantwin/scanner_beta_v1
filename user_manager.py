@@ -363,6 +363,79 @@ class UserScanManager:
             logger.error(f"Failed to get scan history: {e}")
             return []
     
+    def get_detailed_scan_result(self, user_id: int, ip_address: str) -> Optional[Dict[str, Any]]:
+        """Get detailed scan result with port information for latest scan"""
+        try:
+            # Ensure database connection
+            self.ensure_connection()
+            
+            cursor = self.conn.cursor()
+            
+            # Get latest scan result for this IP
+            cursor.execute("""
+                SELECT usr.id, usr.ip_address, usr.timestamp, usr.success,
+                       usr.scan_time, usr.host_state, usr.open_ports_count,
+                       usr.error_message, usr.raw_result, ust.description
+                FROM user_scan_results usr
+                JOIN user_scan_targets ust ON usr.target_id = ust.id
+                WHERE usr.user_id = %s AND usr.ip_address = %s
+                ORDER BY usr.timestamp DESC
+                LIMIT 1
+            """, (user_id, ip_address))
+            
+            scan_row = cursor.fetchone()
+            if not scan_row:
+                return None
+            
+            scan_result = {
+                'id': scan_row[0],
+                'ip_address': str(scan_row[1]),
+                'timestamp': scan_row[2],
+                'success': scan_row[3],
+                'scan_time': scan_row[4],
+                'host_state': scan_row[5],
+                'open_ports_count': scan_row[6],
+                'error_message': scan_row[7],
+                'raw_result': scan_row[8],
+                'description': scan_row[9],
+                'open_ports': []
+            }
+            
+            # Get port details for this scan
+            if scan_result['success']:
+                cursor.execute("""
+                    SELECT port, protocol, state, service, version, product
+                    FROM user_port_results
+                    WHERE scan_result_id = %s
+                    ORDER BY port
+                """, (scan_result['id'],))
+                
+                ports = []
+                for port_row in cursor.fetchall():
+                    ports.append({
+                        'port': port_row[0],
+                        'protocol': port_row[1] or 'tcp',
+                        'state': port_row[2] or 'open',
+                        'service': port_row[3] or 'unknown',
+                        'version': port_row[4] or '',
+                        'product': port_row[5] or ''
+                    })
+                
+                scan_result['open_ports'] = ports
+            
+            # Create host_info structure for template compatibility
+            scan_result['host_info'] = {
+                'state': scan_result['host_state'] or 'unknown',
+                'hostname': 'Unknown',
+                'reason': 'unknown'
+            }
+            
+            return scan_result
+            
+        except Exception as e:
+            logger.error(f"Failed to get detailed scan result: {e}")
+            return None
+    
     def get_port_changes_for_user(self, user_id: int, hours: int = 24) -> List[Dict[str, Any]]:
         """Get port changes for user within specified hours"""
         try:
