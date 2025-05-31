@@ -162,13 +162,36 @@ class DatabaseManager:
             
             results = []
             for row in cursor.fetchall():
+                # Try to extract host info from raw_result, fallback to basic info
+                raw_result = row[7] if row[7] else {}
+                host_info = raw_result.get('host_info', {})
+                
+                # Ensure OS info structure exists
+                if 'os' not in host_info:
+                    host_info['os'] = {
+                        'name': '',
+                        'accuracy': 0,
+                        'family': '',
+                        'generation': '',
+                        'type': '',
+                        'vendor': ''
+                    }
+                
+                # Ensure basic host info exists
+                host_info.update({
+                    'state': host_info.get('state', row[5] or 'unknown'),
+                    'reason': host_info.get('reason', 'unknown'),
+                    'hostname': host_info.get('hostname', ''),
+                    'vendor': host_info.get('vendor', {})
+                })
+                
                 result = {
                     'id': row[0],
                     'timestamp': row[1].isoformat(),
                     'success': row[2],
                     'scan_time': row[3],
                     'error': row[4],
-                    'host_info': {'state': row[5]},
+                    'host_info': host_info,
                     'open_ports_count': row[6]
                 }
                 

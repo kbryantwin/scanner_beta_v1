@@ -176,7 +176,7 @@
                             <div class="col-md-3">
                                 <div class="card border-primary">
                                     <div class="card-body text-center">
-                                        <h3 class="text-primary">{{ latest_scan.host_info.state|title }}</h3>
+                                        <h3 class="text-primary">{{ latest_scan.host_info.get('state', 'unknown')|title }}</h3>
                                         <p class="card-text">Host State</p>
                                     </div>
                                 </div>
@@ -203,12 +203,12 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p><strong>Hostname:</strong> {{ latest_scan.host_info.hostname or 'Unknown' }}</p>
-                                        <p><strong>State:</strong> {{ latest_scan.host_info.state|title }}</p>
-                                        <p><strong>Reason:</strong> {{ latest_scan.host_info.reason }}</p>
+                                        <p><strong>Hostname:</strong> {{ latest_scan.host_info.get('hostname', 'Unknown') }}</p>
+                                        <p><strong>State:</strong> {{ latest_scan.host_info.get('state', 'unknown')|title }}</p>
+                                        <p><strong>Reason:</strong> {{ latest_scan.host_info.get('reason', 'unknown') }}</p>
                                     </div>
                                     <div class="col-md-6">
-                                        {% if latest_scan.host_info.os.name %}
+                                        {% if latest_scan.host_info.get('os', {}).get('name') %}
                                         <p><strong>OS:</strong> {{ latest_scan.host_info.os.name }}</p>
                                         <p><strong>Accuracy:</strong> {{ latest_scan.host_info.os.accuracy }}%</p>
                                         {% else %}
