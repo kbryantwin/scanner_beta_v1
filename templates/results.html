@@ -52,12 +52,10 @@
                                 <i data-feather="refresh-cw" class="me-2"></i>
                                 Rescan Now
                             </a>
-                            {% if latest_scan and latest_scan.success %}
-                                <a href="{{ url_for('schedule_monitoring', ip=ip_address) }}" class="btn btn-warning">
-                                    <i data-feather="clock" class="me-2"></i>
-                                    Enable 24h Monitoring
-                                </a>
-                            {% endif %}
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-info">
+                                <i data-feather="arrow-left" class="me-2"></i>
+                                Back to Dashboard
+                            </a>
                         </div>
                         
                         <!-- Hidden form for rescanning -->
