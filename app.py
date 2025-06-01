@@ -676,7 +676,7 @@ def update_scan_mode():
             return jsonify({'success': False, 'error': 'Invalid scan mode'})
         
         user_id = g.current_user['id']
-        if auth_manager.update_user_scan_mode(user_id, scan_mode):
+        if auth_manager.update_user_settings(user_id, scan_mode=scan_mode):
             return jsonify({'success': True, 'scan_mode': scan_mode})
         else:
             return jsonify({'success': False, 'error': 'Failed to update scan mode'})
