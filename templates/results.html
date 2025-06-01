@@ -15,7 +15,15 @@
                 <i data-feather="shield" class="me-2"></i>
                 Network Monitor
             </a>
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto d-flex align-items-center">
+                <div class="form-check form-switch me-3">
+                    <input class="form-check-input" type="checkbox" id="scanModeToggle" 
+                           data-scan-mode="{{ g.current_user.scan_mode or 'fast' }}" 
+                           {{ 'checked' if g.current_user.scan_mode == 'full' else '' }}>
+                    <label class="form-check-label text-light" for="scanModeToggle">
+                        <span id="scanModeLabel">{{ 'Full' if g.current_user.scan_mode == 'full' else 'Fast' }}</span>
+                    </label>
+                </div>
                 <a class="nav-link" href="{{ url_for('index') }}">
                     <i data-feather="home" class="me-1"></i>
                     Dashboard
@@ -57,7 +65,7 @@
                                 Back to Dashboard
                             </a>
                         </div>
-                        
+
                         <!-- Hidden form for rescanning -->
                         <form id="rescan-form" method="POST" action="{{ url_for('start_scan') }}" style="display: none;">
                             <input type="hidden" name="ip_address" value="{{ ip_address }}">
@@ -110,7 +118,7 @@
                             </div>
                         </div>
                         {% endif %}
-                        
+
                         {% if port_changes.closed_ports %}
                         <div class="alert alert-info">
                             <h6 class="alert-heading">
@@ -124,7 +132,7 @@
                             </div>
                         </div>
                         {% endif %}
-                        
+
                         <small class="text-muted">
                             Comparison between 
                             {{ port_changes.latest_scan_time.strftime('%Y-%m-%d %H:%M:%S') }} 
@@ -284,12 +292,12 @@
                                         <!-- Port toggle chips will be inserted here by JavaScript -->
                                     </div>
                                 </div>
-                                
+
                                 <!-- Chart Container -->
                                 <div class="chart-container" style="position: relative; height: 400px;">
                                     <canvas id="port-history-chart"></canvas>
                                 </div>
-                                
+
                                 <!-- Chart Loading -->
                                 <div id="chart-loading" class="text-center py-4">
                                     <div class="spinner-border text-primary" role="status">
@@ -366,7 +374,7 @@
                                                     {% set current_count = scan.open_ports_count or 0 %}
                                                     {% set prev_count = prev_scan.open_ports_count or 0 %}
                                                     {% set port_diff = current_count - prev_count %}
-                                                    
+
                                                     {% if port_diff > 0 %}
                                                         <span class="badge bg-danger me-1">+{{ port_diff }}</span>
                                                     {% elif port_diff < 0 %}
@@ -417,7 +425,7 @@
         // Initialize Feather icons
         feather.replace();
 
-        
+
 
         // Initialize port history chart if available
         {% if scan_history and scan_history|length > 1 %}

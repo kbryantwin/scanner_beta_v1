@@ -31,6 +31,9 @@ function initializeApplication() {
     // Initialize keyboard shortcuts
     initializeKeyboardShortcuts();
     
+    // Initialize scan mode toggle
+    initializeScanModeToggle();
+    
     console.log('Network Monitoring Tool initialized successfully');
 }
 
@@ -1236,6 +1239,73 @@ function loadCheckboxStates() {
 function getEnabledTargetIds() {
     const targetCheckboxes = document.querySelectorAll('.target-checkbox:checked');
     return Array.from(targetCheckboxes).map(cb => cb.dataset.targetId);
+}
+
+/**
+ * Initialize scan mode toggle
+ */
+function initializeScanModeToggle() {
+    const toggle = document.getElementById('scanModeToggle');
+    const label = document.getElementById('scanModeLabel');
+    
+    if (!toggle || !label) return;
+    
+    // Set initial state based on current mode
+    const currentMode = toggle.dataset.scanMode || 'fast';
+    toggle.checked = currentMode === 'full';
+    label.textContent = currentMode === 'full' ? 'Full' : 'Fast';
+    
+    // Add event listener for toggle changes
+    toggle.addEventListener('change', function() {
+        const newMode = this.checked ? 'full' : 'fast';
+        label.textContent = newMode === 'full' ? 'Full' : 'Fast';
+        
+        // Update scan mode via API
+        updateScanMode(newMode);
+    });
+}
+
+/**
+ * Update scan mode preference
+ */
+function updateScanMode(mode) {
+    fetch('/api/scan_mode', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ scan_mode: mode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Scan mode changed to ${mode.charAt(0).toUpperCase() + mode.slice(1)}`, 'success', 2000);
+        } else {
+            showNotification('Failed to update scan mode', 'danger');
+            // Revert toggle state on failure
+            const toggle = document.getElementById('scanModeToggle');
+            if (toggle) {
+                toggle.checked = !toggle.checked;
+                const label = document.getElementById('scanModeLabel');
+                if (label) {
+                    label.textContent = toggle.checked ? 'Full' : 'Fast';
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error updating scan mode:', error);
+        showNotification('Error updating scan mode', 'danger');
+        // Revert toggle state on error
+        const toggle = document.getElementById('scanModeToggle');
+        if (toggle) {
+            toggle.checked = !toggle.checked;
+            const label = document.getElementById('scanModeLabel');
+            if (label) {
+                label.textContent = toggle.checked ? 'Full' : 'Fast';
+            }
+        }
+    });
 }
 
 // Export functions for global access

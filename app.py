@@ -370,8 +370,12 @@ def perform_scan_async(ip_address, user_id, target_id):
     try:
         logger.info(f"Starting scan for {ip_address} for user {user_id}")
         
-        # Perform the scan
-        scan_result = scanner.scan_host(ip_address)
+        # Get user's scan mode preference
+        user = auth_manager.get_user_by_id(user_id)
+        scan_mode = user.get('scan_mode', 'fast') if user else 'fast'
+        
+        # Perform the scan with appropriate mode
+        scan_result = scanner.scan_host(ip_address, scan_mode=scan_mode)
         
         if scan_result['success']:
             # Store the scan result in user-specific tables
@@ -659,6 +663,27 @@ def get_aggregate_port_history():
     except Exception as e:
         logger.error(f"Error getting aggregate port history: {e}")
         return jsonify({'error': str(e)})
+
+@app.route('/api/scan_mode', methods=['POST'])
+@login_required
+def update_scan_mode():
+    """API endpoint to update user's scan mode preference"""
+    try:
+        data = request.get_json()
+        scan_mode = data.get('scan_mode', 'fast').lower()
+        
+        if scan_mode not in ['fast', 'full']:
+            return jsonify({'success': False, 'error': 'Invalid scan mode'})
+        
+        user_id = g.current_user['id']
+        if auth_manager.update_user_scan_mode(user_id, scan_mode):
+            return jsonify({'success': True, 'scan_mode': scan_mode})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to update scan mode'})
+            
+    except Exception as e:
+        logger.error(f"Error updating scan mode: {e}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.errorhandler(404)
 def not_found_error(error):

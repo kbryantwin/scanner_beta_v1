@@ -89,8 +89,14 @@ class ScanScheduler:
             user_id = target['user_id']
             target_id = target['id']
             
-            # Perform the scan
-            scan_result = self.scanner.scan_host(ip_address)
+            # Get user's scan mode preference
+            from auth import AuthManager
+            auth_manager = AuthManager()
+            user = auth_manager.get_user_by_id(user_id)
+            scan_mode = user.get('scan_mode', 'fast') if user else 'fast'
+            
+            # Perform the scan with user's preferred mode
+            scan_result = self.scanner.scan_host(ip_address, scan_mode=scan_mode)
             
             if scan_result['success']:
                 # Store the scan result in user-specific tables

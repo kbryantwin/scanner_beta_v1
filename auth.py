@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 
 class AuthManager:
     """Manages user authentication and sessions"""
-    
+
     def __init__(self):
         """Initialize auth manager with database connection"""
         self.conn = None
         self.connect()
         self.create_auth_tables()
-    
+
     def connect(self):
         """Connect to PostgreSQL database"""
         try:
@@ -49,12 +49,12 @@ class AuthManager:
             except:
                 pass
             self.connect()
-    
+
     def create_auth_tables(self):
         """Create authentication tables"""
         try:
             cursor = self.conn.cursor()
-            
+
             # Create users table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
@@ -64,10 +64,11 @@ class AuthManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_active BOOLEAN DEFAULT TRUE,
-                    email_notifications BOOLEAN DEFAULT TRUE
+                    email_notifications BOOLEAN DEFAULT TRUE,
+                    scan_mode VARCHAR(50) DEFAULT 'fast'
                 )
             """)
-            
+
             # Create sessions table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -79,7 +80,7 @@ class AuthManager:
                     is_active BOOLEAN DEFAULT TRUE
                 )
             """)
-            
+
             # Create user_scan_targets table (user-specific scan targets)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_scan_targets (
@@ -97,7 +98,7 @@ class AuthManager:
                     UNIQUE(user_id, ip_address)
                 )
             """)
-            
+
             # Create user_scan_results table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_scan_results (
@@ -114,7 +115,7 @@ class AuthManager:
                     raw_result JSONB
                 )
             """)
-            
+
             # Create user_port_results table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_port_results (
@@ -128,7 +129,7 @@ class AuthManager:
                     product VARCHAR(255)
                 )
             """)
-            
+
             # Create email_notifications table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS email_notifications (
@@ -141,35 +142,35 @@ class AuthManager:
                     success BOOLEAN DEFAULT TRUE
                 )
             """)
-            
+
             self.conn.commit()
             logger.info("Authentication tables created successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to create auth tables: {e}")
             self.conn.rollback()
             raise
-    
+
     def register_user(self, email: str, password: str) -> bool:
         """Register a new user"""
         try:
             # Ensure database connection
             self.ensure_connection()
-            
+
             # Hash password with salt
             salt = secrets.token_hex(16)
             password_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest() + ':' + salt
-            
+
             cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT INTO users (email, password_hash)
                 VALUES (%s, %s)
             """, (email.lower(), password_hash))
-            
+
             self.conn.commit()
             logger.info(f"User registered successfully: {email}")
             return True
-            
+
         except psycopg2.IntegrityError:
             logger.warning(f"Registration failed - email already exists: {email}")
             self.conn.rollback()
@@ -178,29 +179,29 @@ class AuthManager:
             logger.error(f"Registration failed: {e}")
             self.conn.rollback()
             return False
-    
+
     def authenticate_user(self, email: str, password: str) -> Optional[Dict[str, Any]]:
         """Authenticate user and return user data"""
         try:
             # Ensure database connection
             self.ensure_connection()
-            
+
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT id, email, password_hash, is_active
                 FROM users
                 WHERE email = %s
             """, (email.lower(),))
-            
+
             user = cursor.fetchone()
             if not user:
                 return None
-            
+
             user_id, user_email, password_hash, is_active = user
-            
+
             if not is_active:
                 return None
-            
+
             # Check password
             stored_hash, salt = password_hash.split(':')
             if hashlib.sha256((password + salt).encode('utf-8')).hexdigest() == stored_hash:
@@ -209,40 +210,40 @@ class AuthManager:
                     'email': user_email,
                     'is_active': is_active
                 }
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Authentication failed: {e}")
             return None
-    
+
     def create_session(self, user_id: int) -> str:
         """Create a new session for user"""
         try:
             session_token = secrets.token_urlsafe(32)
             expires_at = datetime.now() + timedelta(days=30)  # 30-day sessions
-            
+
             cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT INTO user_sessions (user_id, session_token, expires_at)
                 VALUES (%s, %s, %s)
             """, (user_id, session_token, expires_at))
-            
+
             self.conn.commit()
             logger.info(f"Session created for user {user_id}")
             return session_token
-            
+
         except Exception as e:
             logger.error(f"Failed to create session: {e}")
             self.conn.rollback()
             raise
-    
+
     def validate_session(self, session_token: str) -> Optional[Dict[str, Any]]:
         """Validate session and return user data"""
         try:
             # Ensure database connection
             self.ensure_connection()
-            
+
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT u.id, u.email, u.is_active, s.expires_at
@@ -250,31 +251,31 @@ class AuthManager:
                 JOIN user_sessions s ON u.id = s.user_id
                 WHERE s.session_token = %s AND s.is_active = TRUE
             """, (session_token,))
-            
+
             result = cursor.fetchone()
             if not result:
                 return None
-            
+
             user_id, email, is_active, expires_at = result
-            
+
             # Check if session expired
             if datetime.now() > expires_at:
                 self.invalidate_session(session_token)
                 return None
-            
+
             if not is_active:
                 return None
-            
+
             return {
                 'id': user_id,
                 'email': email,
                 'is_active': is_active
             }
-            
+
         except Exception as e:
             logger.error(f"Session validation failed: {e}")
             return None
-    
+
     def invalidate_session(self, session_token: str) -> bool:
         """Invalidate a session"""
         try:
@@ -284,15 +285,15 @@ class AuthManager:
                 SET is_active = FALSE 
                 WHERE session_token = %s
             """, (session_token,))
-            
+
             self.conn.commit()
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to invalidate session: {e}")
             self.conn.rollback()
             return False
-    
+
     def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get user by ID"""
         try:
@@ -302,7 +303,7 @@ class AuthManager:
                 FROM users
                 WHERE id = %s
             """, (user_id,))
-            
+
             user = cursor.fetchone()
             if user:
                 return {
@@ -313,31 +314,64 @@ class AuthManager:
                     'created_at': user[4]
                 }
             return None
-            
+
         except Exception as e:
             logger.error(f"Failed to get user: {e}")
             return None
-    
-    def update_user_settings(self, user_id: int, email_notifications: bool = None) -> bool:
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT id, email, password_hash, created_at, updated_at, is_active, email_notifications, scan_mode
+                FROM users WHERE email = %s
+            """, (email,))
+
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'id': row[0],
+                    'email': row[1],
+                    'password_hash': row[2],
+                    'created_at': row[3],
+                    'updated_at': row[4],
+                    'is_active': row[5],
+                    'email_notifications': row[6],
+                    'scan_mode': row[7] or 'fast'
+                }
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get user by email: {e}")
+            return None
+
+    def update_user_settings(self, user_id: int, email_notifications: bool = None, scan_mode: str = None) -> bool:
         """Update user settings"""
         try:
             cursor = self.conn.cursor()
-            
+
             if email_notifications is not None:
                 cursor.execute("""
                     UPDATE users 
                     SET email_notifications = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, (email_notifications, user_id))
-            
+
+            if scan_mode is not None:
+                cursor.execute("""
+                    UPDATE users
+                    SET scan_mode = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (scan_mode, user_id))
+
             self.conn.commit()
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to update user settings: {e}")
             self.conn.rollback()
             return False
-    
+
     def close(self):
         """Close database connection"""
         if self.conn:

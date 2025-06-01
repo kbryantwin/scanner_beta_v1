@@ -40,19 +40,20 @@ class NetworkScanner:
             logger.error(f"Nmap not found or not accessible: {e}")
             return False
     
-    def scan_host(self, ip_address: str, port_range: str = None) -> Dict[str, Any]:
+    def scan_host(self, ip_address: str, port_range: str = None, scan_mode: str = 'fast') -> Dict[str, Any]:
         """
         Perform comprehensive port scan on target host
         
         Args:
             ip_address: Target IP address to scan
-            port_range: Port range to scan (default: all ports)
+            port_range: Port range to scan (default: based on scan_mode)
+            scan_mode: 'fast' for top 100 ports, 'full' for all ports
             
         Returns:
             Dictionary containing scan results
         """
         try:
-            logger.info(f"Starting scan of {ip_address}")
+            logger.info(f"Starting {scan_mode} scan of {ip_address}")
             
             # Validate IP address
             if not self._validate_ip(ip_address):
@@ -62,9 +63,12 @@ class NetworkScanner:
                     'timestamp': datetime.now().isoformat()
                 }
             
-            # Set default port range if not specified
+            # Set port range based on scan mode if not specified
             if port_range is None:
-                port_range = '1-65535'  # Scan all ports
+                if scan_mode == 'fast':
+                    port_range = '--top-ports 100'  # Use nmap's top 100 ports
+                else:
+                    port_range = '1-65535'  # Scan all ports
             
             # Perform scan without ping (as requested)
             # -sT: TCP connect scan (doesn't require root)
@@ -74,17 +78,29 @@ class NetworkScanner:
             # Note: Removed -O (OS detection) as it requires root privileges
             scan_args = '-sT -Pn -sV --open'
             
+            # If using top ports, add to scan arguments instead of port range
+            if port_range.startswith('--top-ports'):
+                scan_args += f' {port_range}'
+                port_range = None  # Don't pass as ports parameter
+            
             logger.info(f"Scanning {ip_address} with arguments: {scan_args}")
             
             # Perform the scan
-            scan_result = self.nm.scan(
-                hosts=ip_address,
-                ports=port_range,
-                arguments=scan_args
-            )
+            if port_range:
+                scan_result = self.nm.scan(
+                    hosts=ip_address,
+                    ports=port_range,
+                    arguments=scan_args
+                )
+            else:
+                scan_result = self.nm.scan(
+                    hosts=ip_address,
+                    arguments=scan_args
+                )
             
             # Process scan results
             processed_result = self._process_scan_result(ip_address, scan_result)
+            processed_result['scan_mode'] = scan_mode
             
             logger.info(f"Scan completed for {ip_address}. Found {len(processed_result['open_ports'])} open ports")
             
