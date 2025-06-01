@@ -246,7 +246,7 @@ class AuthManager:
 
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT u.id, u.email, u.is_active, s.expires_at
+                SELECT u.id, u.email, u.is_active, s.expires_at, u.scan_mode
                 FROM users u
                 JOIN user_sessions s ON u.id = s.user_id
                 WHERE s.session_token = %s AND s.is_active = TRUE
@@ -256,7 +256,7 @@ class AuthManager:
             if not result:
                 return None
 
-            user_id, email, is_active, expires_at = result
+            user_id, email, is_active, expires_at, scan_mode = result
 
             # Check if session expired
             if datetime.now() > expires_at:
@@ -269,7 +269,8 @@ class AuthManager:
             return {
                 'id': user_id,
                 'email': email,
-                'is_active': is_active
+                'is_active': is_active,
+                'scan_mode': scan_mode or 'fast'
             }
 
         except Exception as e:
@@ -299,7 +300,7 @@ class AuthManager:
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT id, email, is_active, email_notifications, created_at
+                SELECT id, email, is_active, email_notifications, created_at, scan_mode
                 FROM users
                 WHERE id = %s
             """, (user_id,))
@@ -311,7 +312,8 @@ class AuthManager:
                     'email': user[1],
                     'is_active': user[2],
                     'email_notifications': user[3],
-                    'created_at': user[4]
+                    'created_at': user[4],
+                    'scan_mode': user[5] or 'fast'
                 }
             return None
 
