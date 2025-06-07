@@ -89,9 +89,8 @@ class ScanScheduler:
             user_id = target['user_id']
             target_id = target['id']
             
-            # Get user's scan mode preference
-            from auth import AuthManager
-            auth_manager = AuthManager()
+            # Get user's scan mode preference - reuse existing auth manager from app
+            from app import auth_manager
             user = auth_manager.get_user_by_id(user_id)
             scan_mode = user.get('scan_mode', 'fast') if user else 'fast'
             

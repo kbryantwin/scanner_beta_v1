@@ -220,6 +220,7 @@ class UserScanManager:
                          scan_result: Dict[str, Any]) -> bool:
         """Store scan result for user"""
         try:
+            self.ensure_connection()
             cursor = self.conn.cursor()
             
             # Store main scan result
@@ -269,6 +270,7 @@ class UserScanManager:
     def get_targets_due_for_scan(self) -> List[Dict[str, Any]]:
         """Get all targets that are due for scanning"""
         try:
+            self.ensure_connection()
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT id, user_id, ip_address, scan_interval_minutes, next_scan_at
@@ -297,6 +299,7 @@ class UserScanManager:
     def update_next_scan_time(self, target_id: int) -> bool:
         """Update next scan time for a target"""
         try:
+            self.ensure_connection()
             cursor = self.conn.cursor()
             cursor.execute("""
                 UPDATE user_scan_targets 

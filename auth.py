@@ -298,6 +298,7 @@ class AuthManager:
     def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Get user by ID"""
         try:
+            self.ensure_connection()
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT id, email, is_active, email_notifications, created_at, scan_mode
