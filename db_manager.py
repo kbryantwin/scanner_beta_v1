@@ -8,6 +8,7 @@ import os
 import json
 import logging
 import psycopg2
+from db_pool import get_conn, put_conn
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
@@ -25,17 +26,11 @@ class DatabaseManager:
     def connect(self):
         """Connect to PostgreSQL database"""
         try:
-            self.connection = psycopg2.connect(
-                host=os.environ.get('PGHOST'),
-                database=os.environ.get('PGDATABASE'),
-                user=os.environ.get('PGUSER'),
-                password=os.environ.get('PGPASSWORD'),
-                port=os.environ.get('PGPORT')
-            )
+            self.connection = get_conn()
             self.connection.autocommit = True
-            logger.info("Connected to PostgreSQL database successfully")
+            logger.info("Database manager acquired DB connection from pool")
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Failed to acquire database connection: {e}")
             self.connection = None
     
     def create_tables(self):
@@ -61,5 +56,8 @@ class DatabaseManager:
     def close(self):
         """Close database connection"""
         if self.connection:
-            self.connection.close()
-            logger.info("Database connection closed")
+            try:
+                put_conn(self.connection)
+            finally:
+                self.connection = None
+            logger.info("Database connection returned to pool")

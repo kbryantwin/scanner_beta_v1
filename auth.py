@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import psycopg2
 import os
+from db_pool import get_conn, put_conn
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,30 +26,32 @@ class AuthManager:
     def connect(self):
         """Connect to PostgreSQL database"""
         try:
-            self.conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
-            logger.info("Auth manager connected to database")
+            self.conn = get_conn()
+            logger.info("Auth manager acquired DB connection from pool")
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Failed to acquire database connection: {e}")
             raise
 
     def ensure_connection(self):
         """Ensure database connection is active, reconnect if needed"""
         try:
             if self.conn is None or self.conn.closed:
+                if self.conn:
+                    try:
+                        put_conn(self.conn)
+                    except Exception:
+                        pass
                 self.connect()
             else:
-                # Test the connection
                 cursor = self.conn.cursor()
                 cursor.execute("SELECT 1")
                 cursor.close()
-        except:
-            # Connection is bad, reconnect
+        except Exception:
             try:
                 if self.conn:
-                    self.conn.close()
-            except:
-                pass
-            self.connect()
+                    put_conn(self.conn)
+            finally:
+                self.connect()
 
     def create_auth_tables(self):
         """Create authentication tables"""
@@ -378,4 +381,7 @@ class AuthManager:
     def close(self):
         """Close database connection"""
         if self.conn:
-            self.conn.close()
+            try:
+                put_conn(self.conn)
+            finally:
+                self.conn = None

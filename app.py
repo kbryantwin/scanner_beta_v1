@@ -17,6 +17,8 @@ from db_manager import DatabaseManager
 from auth import AuthManager
 from user_manager import UserScanManager
 from email_manager import EmailManager
+from db_pool import close_all
+import atexit
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +42,9 @@ auth_manager = AuthManager()
 user_scan_manager = UserScanManager()
 email_manager = EmailManager()
 scheduler = ScanScheduler(scanner, db_manager)
+
+# Ensure the connection pool is closed when the application exits
+atexit.register(close_all)
 
 # Global variable to track active scans
 active_scans = {}
