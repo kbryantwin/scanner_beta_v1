@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import psycopg2
+from db_pool import get_conn, put_conn
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,10 @@ class EmailManager:
     def connect(self):
         """Connect to PostgreSQL database"""
         try:
-            self.conn = psycopg2.connect(os.environ.get('DATABASE_URL'))
-            logger.info("Email manager connected to database")
+            self.conn = get_conn()
+            logger.info("Email manager acquired DB connection from pool")
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Failed to acquire database connection: {e}")
             raise
     
     def send_daily_digest(self, user_email: str, user_id: int, 
@@ -322,4 +323,7 @@ You can manage your scan targets and settings by logging into your account.
     def close(self):
         """Close database connection"""
         if self.conn:
-            self.conn.close()
+            try:
+                put_conn(self.conn)
+            finally:
+                self.conn = None
